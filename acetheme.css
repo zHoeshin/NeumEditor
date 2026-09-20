@@ -1,0 +1,44 @@
+.ace_gutter {
+    background-color: grey !important;
+}
+
+.ace_gutter-cell {
+    color: black !important;
+}
+
+.ace_gutter-active-line {
+    background-color: #707070 !important;
+}
+
+.ace_active-line {
+    background-color: #d0d0d0 !important;
+}
+
+.ace_scroller.ace_scroll-left:after {
+    box-shadow: none !important;
+}
+
+.ace_text-layer {
+    padding-left: 2px !important;
+    margin: 0px 2px !important;
+}
+
+pre.ace_editor {
+    width: calc(100% - 1px);
+    margin: 0;
+    height: 100%;
+}
+
+.ace_cursor {
+    transform: translateX(-3px) !important;
+}
+
+.ace_gutter-cell.current-executed-line-marker {
+    color: white !important;
+}
+
+.ace_gutter-cell.current-executed-line-marker::before {
+    content: "→" !important;
+    color: white !important;
+
+}

@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neum</title>
+
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="acetheme.css">
+
+
+</head>
+<body>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.44.0/ace.min.js" integrity="sha512-nX2VMiv7R3QlrD1gIskPrBThnEgNbKxfzD1kOMm/cNaeHBt05SlNhNtxMeBHzcXV1DJ/Y1eTzE136o+1Ezu9/g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="index.js" type="module"></script>
+    <div>
+        <div id="filepanel">
+            <div id="openfilesystem">
+                <button id="openfilesystem" onclick="FileSystem.loadFileSystem()">
+                    Open the file system
+                </button>
+            </div>
+        </div>
+        <div id="workingarea">
+            <div id="controls">
+                <button class="control square"><img src="icons/play.svg"></button>
+                <button class="control square"><img src="icons/stop.svg"></button>
+                <button class="control square"><img src="icons/pause.svg"></button>
+                <button class="control square"><img src="icons/step.svg"></button>
+                <div id="viewcontrols">
+                    <button id="screen" class="control long disabled">screen</button>
+                    <button id="code" class="control long">code</button>
+                    <button id="etc" class="control long">etc</button>
+                </div>
+                <button class="control square"><img src="icons/gear.svg"></button>
+            </div>
+
+            <div id="working">
+                <div id="code" class="device">
+                    
+                    <div id="filelist">
+                        <div id="editlist"></div>
+                        <button class="control square" style="border-left: none;">+</button>
+                    </div>
+
+                    <div id="editors"></div>
+                </div>
+                <div id="screen" class="device">
+                    <canvas class="screen" id="screen"></canvas>
+                    <div id="screensettings">
+                        Width
+                        <input id="screenwidth" type="number" name="width" value="256">
+                        Height
+                        <input id="screenheight" type="number" name="height" value="256">
+                        Color mode
+                        <select id="screencolormode">
+                            <option>RGBA8888</option>
+                            <option>RGB565</option>
+                            <option>Monochrome</option>
+                            <option>Pico8</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="etc" class="device disabled"></div>
+            </div>
+        </div>
+    </div>
+    <script src="devices/screen.js" type="module"></script>
+    <script src="formats/urcl.js" type="module"></script>
+</body>

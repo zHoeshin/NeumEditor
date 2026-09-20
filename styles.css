@@ -1,0 +1,250 @@
+body { 
+    margin: 0;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    font-family: Arial;
+}
+
+* {
+	box-sizing: border-box;
+}
+
+
+body > div {
+	display: flex;
+	flex-wrap: nowrap;
+	width: 100vw;
+	height: 100vh;
+	border: 1px solid black;
+}
+
+button#openfilesystem {
+	width: 100%;
+	height: 10em;
+	border: none;
+	background: none;
+}
+
+button:hover {
+	text-decoration: underline;
+	cursor: pointer;
+}
+
+div#workingarea {
+	width: min(100% - 30ch, 90vw);
+	min-width: min(100% - 30ch, 90vw);
+	max-width: min(100% - 30ch, 90vw);
+	height: 100%;
+	background-color: gray;
+	border: 1px solid black;
+	display: flex;
+	flex-wrap: nowrap;
+	flex-direction: column;
+}
+
+div#controls {
+	display: flex;
+	flex-wrap: nowrap;
+	border-bottom: 3px solid dimgray;
+}
+
+button.control {
+	height: 2em;
+	border: 1px solid black;
+	background-color: white;
+}
+button.control.disabled {
+	background-color: gray;
+}
+button.control.long {
+	flex: 1 1 auto;
+}
+button.control.square {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 2em;
+	flex: 0 0 auto;
+}
+button.control.square > img {
+	width: 100%;
+	height: 100%;
+	object-fit: contain;
+	display: block;
+}
+button.control.square:hover > img {
+	color: red;
+}
+
+div#working {
+	width: 100%;
+	height: 100%;
+	border: 1px solid black;
+	display: flex;
+	flex-wrap: nowrap;
+}
+
+div.device {
+	height: 100%;
+	flex: 1;
+	background-color: gray;
+	border: none;
+	display: flex;
+	overflow-x: hidden;
+	overflow-y: hidden;
+}
+
+div.device.disabled {
+	display: none !important;
+}
+
+div#viewcontrols {
+	display: flex;
+	flex: 1;
+}
+
+
+
+
+div#filepanel {
+	width: max(30ch, 10vw);
+	min-width: max(30ch, 10vw);
+	max-width: max(30ch, 10vw);
+	height: 100%;
+	background-color: white;
+	border: 1px solid black;
+	overflow-y: scroll;
+	overflow-x: hidden;
+}
+ul.filesystem.entries {
+	margin: 0;
+	padding-inline-start: 2ch;
+}
+details.filesystem.folder > summary {
+	white-space: nowrap;
+	list-style: none;
+}
+li.filesystem.file {
+	white-space: nowrap;
+	list-style: none;
+	list-style-type: none;
+	padding-left: 1em;
+}
+button.filesystem {
+	background: none;
+	border: none;
+}
+button.filesystem:hover {
+	text-decoration: underline;
+}
+details.filesystem.folder > summary::before {
+    width: 1em;
+    content: "🗀";
+    display: inline-block;
+}
+details.filesystem.folder[open] > summary::before {
+    width: 1em;
+    content: "📂";
+    display: inline-block;
+}
+
+
+div.device#code {
+	flex-direction: column;
+}
+div#filelist {
+	font-size: smaller;
+	width: 100%;
+	height: 2em;
+	max-height: 2em;
+	display: flex;
+	flex-wrap: nowrap;
+}
+div#editors {
+	font-size: smaller;
+	width: 100%;
+	height: calc(100% - 2em - 2px);
+}
+div#editlist {
+	height: 2em;
+	max-height: 2em;
+	flex-direction: row;
+	flex-wrap: nowrap;
+	display: flex;
+	overflow-y: hidden;
+	overflow-x: auto;
+}
+button.editor {
+	border: none;
+	background: none;
+	height: 2em;
+	max-height: 2em;
+	padding: 0;
+	padding-left: 7px;
+	padding-right: 9px;
+}
+button.editor:hover {
+	text-decoration: underline;
+}
+button.closeeditor {
+	border: none;
+	background: none;
+	height: 2em;
+	padding: 0;
+	padding-right: 7px;
+}
+div.editor {
+	border: 1px solid black;
+	border-bottom: none;
+	display: flex;
+	flex-shrink: 0;
+	background-color: white;
+	height: 2em;
+	max-height: 2em;
+}
+div.editor.hidden {
+	border-bottom: 1px solid black;
+	background-color: gray;
+}
+div.editorwrapper {
+	font-size: initial;
+	height: 100%;
+	width: 100%;
+	padding-top: 2px;
+	background-color: white;
+}
+div.editorwrapper.hidden {
+	display: none;
+}
+
+
+
+div#screen {
+	display: flex;
+	flex-direction: column;
+	margin: 1em;
+	width: calc(100% - 2em);
+	height: calc(100% - 2em);
+	background: none;
+}
+div#screensettings {
+	padding-top: 1em;
+	display: flex;
+	align-content: center;
+}
+div#screensettings > input {
+    flex: 0 0 auto;
+	width: 5em;
+}
+canvas.screen {
+	background-color: transparent;
+	object-fit: contain;
+	max-width: 100%;
+	max-height: calc(100% - 4em);
+	min-width: 0;
+	min-height: 0;
+	width: auto;
+	height: auto;
+	image-rendering: pixelated;
+}
