@@ -119,6 +119,7 @@ class PlainTextEditor extends Editor {
 }
 
 
+
 window["FileSystem"] = function() {
 	let dirhandle = null
 
@@ -304,29 +305,180 @@ window["edit"] = async function(path, name, handle) {
 }
 
 window["RuntimeManager"] = function() {
-	const Status = {
-		None: -1,
-		Continue: 0,
-		Stop: 1,
-		Input: 2,
-		Error: 3,
-	}
-	let state = Status.None
+	const StateNone = -1
+	const StateContinue = 0
+	const StateStop = 1
+	const StateInput = 2
+	const StateError = 3
+
+	let state = -1
 
 	let path = ""
 
+	let runtime = null
+	let animationframe = -1
 
+	let fresh = false
+	let runnable = false
+	let running = false
+
+	let input = 0
+
+	let totalcount = 0
+	let count = 0
+
+	let starttime = 0
 
 	const self = {
 		compile() {
-			if (state != Status.None) {
-				return
+			if (state != StateNone) {
+				console.warn("Compiling while running")
+				return false
+			}
+			if (animationframe != -1) {
+				console.warn("Compiling while animation frame present")
+				return false
 			}
 			const editor = editorFiles[editorCurrent]?.editor
 			if (!editor) {
+				console.warn("No editor to compile")
+				return false
+			}
+			runtime = editor.compile()
+			if (!runtime) {
+				console.warn("Failed to compile")
+				return false
+			}
+			ScreenDevice?.clear()
+			path = editorCurrent
+			fresh = true
+			runnable = true
+			totalcount = 0
+			count = 0
+			return true
+		},
+
+		run() {
+			if (path == null || path != editorCurrent || runtime == null) {
+				if (!self.compile()) {
+					console.error("Could not compile")
+					return
+				}
+			}
+			state = StateContinue
+			fresh = false
+			running = true
+
+			starttime = performance.now()
+
+			animationframe = requestAnimationFrame(self.frame)
+		},
+
+		frame() {
+			if (!runnable || !running) {
+				cancelAnimationFrame(animationframe)
+				animationframe = -1
 				return
 			}
-			editor.compile()
+			if (state == StateInput) {
+				return
+			}
+
+			const [result, c, callback] = runtime.burst(15, input)
+			const e = performance.now()
+
+			totalcount += c
+			count += c
+
+	        if (e - starttime >= 1000) {
+	        	if (e - starttime >= 10000) {
+	        		console.error(`One frame ran for ${e - starttime}, stopping`)
+	        		running = false
+	        		fresh = true
+	        	}
+
+	        	console.log(`${count * 1000 / (e - starttime)}(raw ${count}) in the last second`)
+	        	starttime = e
+	        	count = 0
+	        }
+
+	        ScreenDevice.flush()
+
+	        switch (result) {
+	        case StateContinue:
+	        	animationframe = requestAnimationFrame(self.frame)
+	       		break
+	       	case StateStop:
+	       		console.info("Halted execution")
+	       		console.log(runtime)
+	       		runnable = false
+	       		running = false
+				runtime.markCurrentLine(runtime.getLine())
+				state = StateNone
+				cancelAnimationFrame(animationframe)
+				animationframe = -1
+				break
+			case StateInput:
+				state = StateInput
+				cancelAnimationFrame(animationframe)
+				callback?.()
+				break
+	        }
+
+		},
+
+		break() {
+       		console.info("Execution broken")
+       		console.log(runtime)
+       		runnable = false
+       		running = false
+			runtime.markCurrentLine(runtime.getLine())
+			state = StateNone
+			cancelAnimationFrame(animationframe)
+			animationframe = -1
+			state = StateNone
+		},
+
+		step() {
+			if (!runnable || running) {
+				return
+			}
+			if (state == StateInput) {
+				return
+			}
+			const [result, c, f] = runtime.step(input)
+			console.log(runtime.getLine(), runtime)
+			runtime.markCurrentLine(runtime.getLine())
+
+	        ScreenDevice.flush()
+
+	        switch (result) {
+	        case StateContinue:
+	       		break
+	       	case StateStop:
+	       		console.info("Halted execution")
+	       		console.log(runtime)
+	       		runnable = false
+	       		running = false
+				runtime.markCurrentLine(runtime.getLine())
+				state = StateNone
+				cancelAnimationFrame(animationframe)
+				animationframe = -1
+				break
+			case StateInput:
+				state = StateInput
+				cancelAnimationFrame(animationframe)
+				f?.()
+				break
+	        }
+		},
+
+		sendInput(value) {
+			input = value
+			state = StateContinue
+			if (running === true) {
+				animationframe = requestAnimationFrame(self.frame)
+			}
 		}
 	}
 
@@ -391,6 +543,10 @@ document.addEventListener('keydown', (event) => {
     	switch (event.code) {
     	case "KeyR":
     		RuntimeManager.run()
+        	event.preventDefault()
+    		break
+    	case "KeyB":
+    		RuntimeManager.break()
         	event.preventDefault()
     		break
     	case "KeyP":

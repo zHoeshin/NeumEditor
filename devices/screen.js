@@ -1,4 +1,4 @@
-window.Devices["Screen"] = function () {
+window.Devices["ScreenDevice"] = window["ScreenDevice"] = function () {
 	let canvas = null
 	let ctx = null
 
@@ -15,7 +15,7 @@ window.Devices["Screen"] = function () {
 
 	let writeCount = 0
 
-	let clearColor = 0x000000ff
+	let clearColor = 0 //0x000000ff
 
 	const colorSpaces = {
 		"RGBA8888": function (color) {
@@ -79,7 +79,7 @@ window.Devices["Screen"] = function () {
 		},
 	}
 
-	let currentColorSpace = colorSpaces.Pico8
+	let currentColorSpace = colorSpaces.RGB565
 
 	const self = {
 		init() {
@@ -109,6 +109,8 @@ window.Devices["Screen"] = function () {
 
 		prepare() {
 			canvas.style.aspectRatio = `${canvas.width} / ${canvas.height}`
+			width = canvas.width
+			height = canvas.height
 			ctx = canvas.getContext("2d")
 			ctx.fillStyle = "black"
 			ctx.fillRect(0, 0, width, height)
@@ -136,11 +138,19 @@ window.Devices["Screen"] = function () {
 			writeCount++
 		},
 
+		getWidth() {
+			return width
+		},
+
+		getHeight() {
+			return height
+		},
+
 		getPixel(x, y) {
 		    return ((rawimagedata.data[(y * canvas.width + x) * 4] << 24) |
 	        (rawimagedata.data[(y * canvas.width + x) * 4 + 1] << 16) | 
 	        (rawimagedata.data[(y * canvas.width + x) * 4 + 2] << 8) |
-	        rawimagedata.data[(y * canvas.width + x) * 4 + 3])
+	        rawimagedata.data[(y * canvas.width + x) * 4 + 3]) >>> 0
 		},
 
 		swap() {
@@ -152,24 +162,48 @@ window.Devices["Screen"] = function () {
 		flush() {
 			if (needsSwap) {
 				ctx.putImageData(buffer, 0, 0)
+				needsSwap = false
 			}
+		},
+
+		clearBuffer() {
+			var c = (clearColor & 0xff) << 24 | (clearColor & 0xff00) << 8 | (clearColor & 0xff0000) >>> 8 | clearColor >>> 24
+			var iter = new Uint32Array(rawimagedata.data.buffer)
+			for (let i = 0; i < iter.length; i++) {
+				iter[i] = c
+			}
+			var convc = currentColorSpace(clearColor)
+			var c2 = (convc[3]) << 24 | (convc[2] << 16) | (convc[1] << 8) | convc[0]
+			var iter2 = new Uint32Array(imagedata.data.buffer)
+			for (let i = 0; i < iter2.length; i++) {
+				iter2[i] = c2
+			}
+			buffer.data.set(imagedata.data.slice())
+			rawbuffer.data.set(rawimagedata.data.slice())
 		},
 
 		clear() {
 			ctx?.fillRect(0, 0, width, height)
 			var c = (clearColor & 0xff) << 24 | (clearColor & 0xff00) << 8 | (clearColor & 0xff0000) >>> 8 | clearColor >>> 24
-			var iter = new Uint32Array(rawimagedata.buffer)
+			var iter = new Uint32Array(rawimagedata.data.buffer)
 			for (let i = 0; i < iter.length; i++) {
 				iter[i] = c
 			}
 			var convc = currentColorSpace(clearColor)
-			var c2 = (convc & 0xff) << 24 | (convc & 0xff00) << 8 | (convc & 0xff0000) >>> 8 | convc >>> 24
-			var iter2 = new Uint32Array(imagedata.buffer)
+			var c2 = (convc[3]) << 24 | (convc[2] << 16) | (convc[1] << 8) | convc[0]
+			var iter2 = new Uint32Array(imagedata.data.buffer)
 			for (let i = 0; i < iter2.length; i++) {
-				iter2[i] = c
+				iter2[i] = c2
 			}
 			buffer.data.set(imagedata.data.slice())
 			rawbuffer.data.set(rawimagedata.data.slice())
+			ctx.putImageData(buffer, 0, 0)
+
+			// imagedata = ctx.getImageData(0, 0, canvas.width, canvas.height)
+			// rawimagedata = ctx.getImageData(0, 0, canvas.width, canvas.height)
+			// buffer = ctx.createImageData(canvas.width, canvas.height)
+			// rawbuffer = ctx.createImageData(canvas.width, canvas.height)
+			needsSwap = false
 		},
 	}
 
