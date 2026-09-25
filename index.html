@@ -29,14 +29,14 @@
                 <button class="control square"><img src="icons/step.svg"></button>
                 <div id="viewcontrols">
                     <button id="screen" class="control long disabled">screen</button>
-                    <button id="code" class="control long">code</button>
-                    <button id="etc" class="control long">etc</button>
+                    <button id="code" class="control long disabled">code</button>
+                    <button id="console" class="control long">console</button>
                 </div>
                 <button class="control square"><img src="icons/gear.svg"></button>
             </div>
 
             <div id="working">
-                <div id="code" class="device">
+                <div id="code" class="device disabled">
                     
                     <div id="filelist">
                         <div id="editlist"></div>
@@ -45,7 +45,7 @@
 
                     <div id="editors"></div>
                 </div>
-                <div id="screen" class="device">
+                <div id="screen" class="device disabled">
                     <canvas class="screen" id="screen"></canvas>
                     <div id="screensettings">
                         Width
@@ -61,12 +61,23 @@
                         </select>
                     </div>
                 </div>
-                <div id="etc" class="device disabled"></div>
+                <div id="console" class="device">
+                    <div id="consolewrapper" style="--w: 10; --h: 10;">
+                        <canvas id="consolebg"></canvas>
+                        <div id="consoletext">
+                            <pre id="consoletext"></pre>
+                            <canvas id="consolefg"></canvas>
+                        </div>
+                        <canvas id="consoleselection"></canvas>
+                        <div class="consolecursor" style="--x: 0; --y: 0"></div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
     <script src="devices/screen.js" type="module"></script>
     <script src="devices/timer.js" type="module"></script>
+    <script src="devices/console.js" type="module"></script>
     <script src="devices/keyboard.js" type="module"></script>
     <script src="devices/mouse.js" type="module"></script>
     <script src="formats/urcl.js" type="module"></script>

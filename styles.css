@@ -223,9 +223,9 @@ div.editorwrapper.hidden {
 div#screen {
 	display: flex;
 	flex-direction: column;
-	margin: 1em;
-	width: calc(100% - 2em);
-	height: calc(100% - 2em);
+	margin: 0.5em;
+	width: calc(100% - 1em);
+	height: calc(100% - 1em);
 	background: none;
 }
 div#screensettings {
@@ -247,4 +247,165 @@ canvas.screen {
 	width: auto;
 	height: auto;
 	image-rendering: pixelated;
+}
+
+
+
+.device#console {
+	display: flex;
+	margin: 0.5em;
+	position: relative;
+}
+div#consolewrapper {
+	position: absolute;
+	font-family: monospace;
+    line-height: 1.1em;
+    /*width: 100%;*/
+    /*height: 100%;*/
+	/*font-size: calc(100cqw / var(--w) / (tan(atan2(1ch, 1px)) / tan(atan2(1em, 1px)))); */
+	width: calc(var(--w) * 1ch);
+	height: calc(var(--h) * 1.1em);
+	/*aspect-ratio: calc((var(--w) * tan(atan2(1ch, 1px))) / (var(--h) * tan(atan2(1.1em, 1px))));*/
+	flex-shrink: 1;
+	flex-grow: 1;
+	isolation: isolate;
+}
+canvas#consolefg {
+	inset: 0;
+	display: none;
+	image-rendering: pixelated;
+	width: inherit;
+	height: inherit;
+    position: absolute;
+	background-color: transparent !important;
+	/*mix-blend-mode: multiply;*/
+	pointer-events: none;
+	will-change: transform;
+}
+canvas#consolebg {
+	image-rendering: pixelated;
+	width: inherit;
+	height: inherit;
+    position: absolute;
+	mix-blend-mode: multiply;
+	background-color: transparent !important;
+}
+div#consoletext {
+	font-size: inherit;
+	width: inherit;
+	height: inherit;
+    position: absolute;
+	/*isolation: isolate;*/
+}
+div#consoletextbg {
+	width: inherit;
+	height: inherit;
+    position: absolute;
+	/*isolation: isolate;*/
+}
+
+div#consolefgwrapper{
+	width: inherit;
+	height: inherit;
+	position: absolute;
+	inset: 0;
+	isolation: isolate;
+}
+
+pre#consoletext {
+	font-size: inherit;
+	image-rendering: pixelated;
+	image-rendering: crisp-edges;
+	position: absolute;
+	/*color: #ffffff;*/
+	color: transparent;
+	background-repeat: no-repeat;
+	background-size: 100% 100%;
+	background-clip: text;
+	width: inherit;
+	height: inherit;
+    position: absolute;
+	/*mix-blend-mode: multiply;*/
+	margin: 0;
+}
+
+pre#consoletextbg {
+	background-color: #ffffff;
+	position: absolute;
+	color: transparent;
+	width: inherit;
+	height: inherit;
+    position: absolute;
+	/*mix-blend-mode: multiply;*/
+	margin: 0;
+}
+
+pre#consoletext::selection {
+	color: #ffffff80;
+}
+canvas#consoleselection {
+	display: none;
+	image-rendering: pixelated;
+	width: inherit;
+	height: inherit;
+    position: absolute;
+    mix-blend-mode: difference;
+}
+
+pre#consoletext > span {
+    text-shadow: 0.05px 0 0 rgba(currentColor, 0.25);
+}
+pre#consoletext > span.b {
+    font-weight: bolder;
+    text-shadow: 0.5px 0 0 currentColor;
+}
+pre#consoletext > span.f {
+    font-weight: lighter;
+    text-shadow: none;
+}
+pre#consoletext > span.i {
+    font-style: italic;
+}
+pre#consoletext > span.u {
+    text-decoration: underline;
+}
+pre#consoletext > span.s {
+
+}
+pre#consoletext > span.r {
+
+}
+pre#consoletext > span.I {
+    color: var(--b);
+    background-color: var(--c);
+}
+pre#consoletext > span.h {
+    position: relative;
+}
+pre#consoletext > span.h {
+    color: grey !important;
+    background-color: grey !important;
+    outline: 1px black solid;
+}
+pre#consoletext > span.h:hover {
+    color: var(--c) !important;
+    background-color: var(--b) !important;
+}
+pre#consoletext > span.h.I:hover {
+    color: var(--b) !important;
+    background-color: var(--c) !important;
+}
+pre#consoletext > span.x {
+    text-decoration: line-through;
+}
+pre#consoletext > span.d {
+    text-decoration-line: underline;
+    text-decoration-style: double;
+}
+pre#consoletext > span.u.x {
+    text-decoration: underline line-through;
+}
+pre#consoletext > span.x.d {
+    text-decoration: underline line-through;
+    text-decoration-style: double;
 }

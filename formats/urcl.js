@@ -110,6 +110,7 @@ class URCLMachine {
 		this.bits = headers.BITS
 		this.mask = 2 ** this.bits - 1;
 		this.msb = 2 ** (this.bits - 1);
+		this.maxp1 = 2 ** this.bits
 		this.maxsigned = (2 ** (this.bits - 1)) - 1
 		this.signconv = 2 ** (this.bits - 1)
 		this.pc2line = instructionlines
@@ -122,8 +123,10 @@ class URCLMachine {
 
 		const dec = this.editor.getSession()._gutterDecorations;
 
+		const session = this.editor.getSession()
+
 		if (!dec) {
-			this.editor.getSession().addGutterDecoration(line, "current-executed-line-marker")
+			session.addGutterDecoration(line, "current-executed-line-marker")
 			this.markedline = line
 			return
 		}
@@ -139,7 +142,7 @@ class URCLMachine {
 			}
 		}
 
-		this.editor.getSession().addGutterDecoration(line, "current-executed-line-marker")
+		session.addGutterDecoration(line, "current-executed-line-marker")
 		this.markedline = line
 	}
 
@@ -155,7 +158,9 @@ class URCLMachine {
         // }
         // return (value & this.msb) === 0 ? value : value | (0xffff_ffff << this.bits);
 		
-		return value << (32 - this.bits) >> (32 - this.bits)
+		// return value << (32 - this.bits) >> (32 - this.bits)
+
+		return (value & this.msb) ? value - this.maxp1 : value
 	}
 
 	toUnsigned(value) {
@@ -297,6 +302,14 @@ class URCLMachine {
 			break
 		case PORTS.KEY:
 			KeyboardDevice.setOffset(value)
+			break
+		case PORTS.TEXT:
+			ConsoleDevice.outChar(String.fromCodePoint(value))
+			break
+		case PORTS.NUMB:
+			for(const char of `${value}`) {
+				ConsoleDevice.outChar(char)
+			}
 			break
 		}
 	}
@@ -522,7 +535,7 @@ const URCL = function(){
 
 			function escapeString(str) {
 				return str.replace(
-					/\\[0-9]|\\['"\bfnrtv]|\\column[0-9a-f]{2}|\\u[0-9a-f]{4}|\\u\{[0-9a-f]+\}|\\./ig,
+					/\\[0-9]|\\['"\bfnrtv]|\\x[0-9a-f]{2}|\\u[0-9a-f]{4}|\\u\{[0-9a-f]+\}|\\./ig,
 					match => {
 						switch (match[1]) {
 							case "'": case '"': case "\\": return match[1];
@@ -537,7 +550,7 @@ const URCL = function(){
 								return String.fromCodePoint(parseInt(match.substring(3), 16))
 							}
 							return String.fromCharCode(parseInt(match.substring(2), 16))
-							case "column": return String.fromCharCode(parseInt(match.substring(2), 16))
+							case "x": return String.fromCharCode(parseInt(match.substring(2), 16))
 							case "0": return "\0"
 							default:  return match.substring(1)
 						}
@@ -1070,7 +1083,7 @@ const URCL = function(){
 									if (n <= 32) {
 										bits = 32
 									} else {
-										nnotations.push({column: line[2].column + 1, row: line[2].row + 1, type: "error", text: `BITS above 32 not supported, got ${n}`})
+										annotations.push({column: line[2].column + 1, row: line[2].row + 1, type: "error", text: `BITS above 32 not supported, got ${n}`})
 										unrecoverable = true
 									}
 								}
@@ -1284,11 +1297,11 @@ const URCL = function(){
 					if (argm.value == 0) {
 						return `0`
 					}else if (argm.value >= 0) {
-						const s = `(this.registers[${argm.value}] ${LIM})`;
+						return `(this.registers[${argm.value}] ${LIM})`;
 					} else if (argm.value == -1) {
-						const s = `(this.pc)`;
+						return `(this.pc)`;
 					} else if(argm.value == -2) {
-						const s = `(this.sp)`;
+						return `(this.sp)`;
 					}
 					break
 				case "mem":
@@ -1319,9 +1332,9 @@ const URCL = function(){
 					annotations.push({row: line, column: 0, text: `Cannot assign to an immediate`, type: `error`})
 					break
 				case "reg":
-					if (dest.value == 0) {
+					/*if (dest.value == 0) {
 						return `${value};`
-					} else if (dest.value > 0) {
+					} else */if (dest.value >= 0) {
 						// if (BITS == 8 || BITS == 16 || BITS == 32) {
 						// 	return `this.registers[${dest.value}] = ${s};`
 						// } else {
@@ -1690,7 +1703,7 @@ case "DIV":
 		annotations.push({column: opcode.column, row: opcode.row, type: "error", text: `Expected 3 operands for instruction ${opcode.value}`})
 		unrecoverable = true
 	} else {
-		instr += assign(args[0], `${arg(args[2])} === 0 ? this.mask : this.toSigned(${arg(args[1])}) / this.toSigned(${arg(args[2])})`)
+		instr += assign(args[0], `${arg(args[2])} === 0 ? this.mask : Math.trunc(this.toSigned(${arg(args[1])}) / this.toSigned(${arg(args[2])}))`)
 	}
 	break;
 case "MOD":
@@ -2011,7 +2024,9 @@ default:
 	        		DATA.push(d.value)
 	        		break
 	        	case "str":
-	        		DATA.push(d.value.codePointAt(0))
+	        		for (const char of d.value) {
+	        			DATA.push(char.codePointAt(0))
+	        		}
 	        		break
 	        	default:
 	        		break

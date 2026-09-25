@@ -406,6 +406,7 @@ window["RuntimeManager"] = function() {
 	        }
 
 	        ScreenDevice.flush()
+	        ConsoleDevice.flush()
 
 	        switch (result) {
 	        case StateContinue:
@@ -455,6 +456,7 @@ window["RuntimeManager"] = function() {
 			runtime.markCurrentLine(runtime.getLine())
 
 	        ScreenDevice.flush()
+	        ConsoleDevice.flush()
 
 	        switch (result) {
 	        case StateContinue:
