@@ -55,6 +55,20 @@ const PORTS = {
 	"UD14": 61,
 	"UD15": 62,
 	"UD16": 63,
+
+
+	"MOUSE_X": 70,
+	"MOUSE_Y": 71,
+	"MOUSE_DX": 72,
+	"MOUSE_DY": 73,
+	"MOUSE_WHEEL": 74,
+	"MOUSE_BUTTONS": 75,
+
+	"%CURKEY": 65,
+	"%CURKEYCODE": 66,
+	"%KEY": 67,
+	"%CURCODEPOINT": 68,
+	"%GAMEPAD": 80,
 };
 
 class URCLMachine {
@@ -104,8 +118,28 @@ class URCLMachine {
 	}
 
 	markCurrentLine(line) {
-		this?.editor.getSession().removeGutterDecoration(this.markedline, "current-executed-line-marker")
-		this?.editor.getSession().addGutterDecoration(line, "current-executed-line-marker")
+		this.editor.getSession().removeGutterDecoration(this.markedline, "current-executed-line-marker")
+
+		const dec = this.editor.getSession()._gutterDecorations;
+
+		if (!dec) {
+			this.editor.getSession().addGutterDecoration(line, "current-executed-line-marker")
+			this.markedline = line
+			return
+		}
+
+		for (let row of Object.keys(dec)) {
+			const classNames = dec[row];
+			if (!classNames) {
+				continue
+			}
+
+			for (let className of Object.keys(classNames)) {
+				session.removeGutterDecoration(Number(row), className);
+			}
+		}
+
+		this.editor.getSession().addGutterDecoration(line, "current-executed-line-marker")
 		this.markedline = line
 	}
 
@@ -116,10 +150,12 @@ class URCLMachine {
 	    }
 	    return value;*/
 	    //return (value ^ this.msb) - this.msb
-        if (this.bits === 32){
-            return 0| value;
-        }
-        return (value & this.msb) === 0 ? value : value | (0xffff_ffff << this.bits);
+        // if (this.bits === 32){
+        //     return 0| value;
+        // }
+        // return (value & this.msb) === 0 ? value : value | (0xffff_ffff << this.bits);
+		
+		return value << (32 - this.bits) >> (32 - this.bits)
 	}
 
 	toUnsigned(value) {
@@ -131,22 +167,22 @@ class URCLMachine {
 	}
 
 	pushMemory(value) {
-        if (this.sp !== 0 && this.sp <= -1 ){ //this.memorysize){
-            // console.error(`Stack overflow: ${this.sp} <= ${this.memorysize}}`);
-            this.sp = 0
-            return 0
-        }
+        // if (this.sp !== 0 && this.sp <= -1 ){ //this.memorysize){
+        //     console.error(`Stack overflow: ${this.sp} <= ${this.memorysize}}`);
+        //     this.sp = 0
+        //     return 0
+        // }
         this.sp = this.sp - 1
         this.memory[this.sp] = value;
 
         return 0
     }
     popMemory() {
-        if (this.sp >= this.memorysize){
-            // console.error(`Stack underflow: ${this.sp} >= ${this.memorysize}`);
-            this.sp = this.memorysize - 1
-            return 0
-        }
+        // if (this.sp >= this.memorysize){
+        //     console.error(`Stack underflow: ${this.sp} >= ${this.memorysize}`);
+        //     this.sp = this.memorysize - 1
+        //     return 0
+        // }
         const value = this.memory[this.sp];
         this.sp = this.sp + 1
 
@@ -154,41 +190,68 @@ class URCLMachine {
     }
 
     setMemory(addr, value){
-        if (addr >= this.memorysize){
-            // console.error(`Heap overflow on store: ${addr} >= ${this.memorysize}`);
-            return 0
-        }
+        // if (addr >= this.memorysize){
+        //     console.error(`Heap overflow on store: ${addr} >= ${this.memorysize}`);
+        //     return 0
+        // }
         this.memory[addr] = value;
     
         return 0
     }
     getMemory(addr){
-        if (addr >= this.memorysize){
-            // console.error(`Heap overflow on load: ${addr} >= ${this.memorysize}`);
-            return 0
-        }
+        // if (addr >= this.memorysize){
+        //     console.error(`Heap overflow on load: ${addr} >= ${this.memorysize}`);
+        //     return 0
+        // }
         return this.memory[addr];
     }
 
 	readPort(port) {
 		switch (port) {
 		case PORTS.X:
-			return ScreenDevice?.getWidth()
+			return ScreenDevice.getWidth()
 			break
 		case PORTS.Y:
-			return ScreenDevice?.getHeight()
+			return ScreenDevice.getHeight()
 			break
 		case PORTS.COLOR:
-			return ScreenDevice?.getPixel(this.x, this.y) ?? 0
+			return ScreenDevice.getPixel(this.x, this.y) ?? 0
 		case PORTS.CLEAR:
-			ScreenDevice?.clear()
+			ScreenDevice.clear()
 			break
 		case PORTS.BUFFER:
 			return this.buffer
 		case PORTS.WAIT:
 			return ()=>TimerDevice.wait(this.wait)
 		case PORTS.RNG:
-			return Math.random() * this.mask
+			return Math.random() & this.mask
+		case PORTS.MOUSE_X:
+			return MouseDevice.getX()
+			break;
+		case PORTS.MOUSE_Y:
+			return MouseDevice.getY()
+			break;
+		case PORTS.MOUSE_DX:
+			return MouseDevice.getSpeedX()
+			break;
+		case PORTS.MOUSE_DY:
+			return MouseDevice.getSpeedY()
+			break;
+		case PORTS.MOUSE_BUTTONS:
+			return MouseDevice.getButtons()	
+			break;
+		case PORTS.GAMEPAD:
+			return KeyboardDevice.getPad()
+			break
+		case PORTS.CURKEY:
+			return ([KeyboardDevice.getCurrentUSB(), KeyboardDevice.setCurrentUSB(0)][0])
+		case PORTS.CURKEYCODE:
+			return ([KeyboardDevice.getCurrentKeycode(), KeyboardDevice.setCurrentKeycode(0)][0])
+		case PORTS.CURCODEPOINT:
+			return ([KeyboardDevice.getCurrentCodepoint(), KeyboardDevice.setCurrentCodepoint(0)][0])
+		case PORTS.KEY:
+			return KeyboardDevice.getAtOffsetPacked(this.bits)
+			break;
 		default:
 			return null
 		}
@@ -203,21 +266,21 @@ class URCLMachine {
 			this.y = value
 			break
 		case PORTS.COLOR:
-			ScreenDevice?.setPixel(this.x, this.y, value)
+			ScreenDevice.setPixel(this.x, this.y, value)
 			if (!this.buffer) {
-				ScreenDevice?.swap()
+				ScreenDevice.swap()
 			}
 			break
 		case PORTS.CLEAR:
-			ScreenDevice?.clear()
+			ScreenDevice.clear()
 			break
 		case PORTS.BUFFER:
 			switch(value) {
 			case 0:
 				// ScreenDevice?.clear()
-				ScreenDevice?.swap()
-				ScreenDevice?.flush()
-				ScreenDevice?.clearBuffer()
+				ScreenDevice.swap()
+				ScreenDevice.flush()
+				ScreenDevice.clearBuffer()
 				this.buffer = false
 				break;
 			case 1:
@@ -231,6 +294,9 @@ class URCLMachine {
 			break
 		case PORTS.WAIT:
 			this.wait = value
+			break
+		case PORTS.KEY:
+			KeyboardDevice.setOffset(value)
 			break
 		}
 	}
@@ -561,15 +627,19 @@ const URCL = function(){
 					}
 					numstr = numstr.replace(/_/g, "")
 					if (numstr.match(/^[+-]?\d+$/)) {
-						line.push(new Token("num", parseInt(numstr), scolumn, srow, si))
+						line.push(new Token("num", parseInt(numstr, 10), scolumn, srow, si))
 						continue
 					}
 					if (numstr.match(/^[+-]?0x[A-F0-9]+$/i)) {
-						line.push(new Token("num", parseInt(numstr), scolumn, srow, si))
+						line.push(new Token("num", parseInt(numstr.replace(/0x/ig, ""), 16), scolumn, srow, si))
 						continue
 					}
 					if (numstr.match(/^[+-]?0b[01]+$/i)) {
-						line.push(new Token("num", parseInt(numstr), scolumn, srow, si))
+						line.push(new Token("num", parseInt(numstr.replace(/0b/ig, ""), 2), scolumn, srow, si))
+						continue
+					}
+					if (numstr.match(/^[+-]?0o[01234567]+$/i)) {
+						line.push(new Token("num", parseInt(numstr.replace(/0o/ig, ""), 8), scolumn, srow, si))
 						continue
 					}
 					annotations.push({row: row + 1, column: column + 1, type: "error", text: `Unknown numeric literal type ${numstr}, default to ${defaultErrorNumber}`})
@@ -676,7 +746,7 @@ const URCL = function(){
 						if (char.match(/\s/)) {
 							column += 1
 							i += 1
-							if (c == "\n") {
+							if (char == "\n") {
 								column = 0
 								row += 1
 							}
@@ -690,6 +760,9 @@ const URCL = function(){
 						if ("+-0123456789_".includes(char)) {
 							let numstr = ""
 							let char1 = raw[i]
+							let scolumn = column
+							let srow = row
+							let si = i
 							while (i < L && "+-0123456789abcdefABCDEF_bx".includes(char1)) {
 								numstr += char1
 								i += 1
@@ -698,15 +771,19 @@ const URCL = function(){
 							}
 							numstr = numstr.replace(/_/g, "")
 							if (numstr.match(/^[+-]?\d+$/)) {
-								arr.push(new Token("num", parseInt(numstr), scolumn, srow, si))
+								line.push(new Token("num", parseInt(numstr, 10), scolumn, srow, si))
 								continue
 							}
 							if (numstr.match(/^[+-]?0x[A-F0-9]+$/i)) {
-								arr.push(new Token("num", parseInt(numstr), scolumn, srow, si))
+								line.push(new Token("num", parseInt(numstr.replace(/0x/ig, ""), 16), scolumn, srow, si))
 								continue
 							}
 							if (numstr.match(/^[+-]?0b[01]+$/i)) {
-								arr.push(new Token("num", parseInt(numstr), scolumn, srow, si))
+								line.push(new Token("num", parseInt(numstr.replace(/0b/ig, ""), 2), scolumn, srow, si))
+								continue
+							}
+							if (numstr.match(/^[+-]?0o[01234567]+$/i)) {
+								line.push(new Token("num", parseInt(numstr.replace(/0o/ig, ""), 8), scolumn, srow, si))
 								continue
 							}
 							annotations.push({row: row + 1, column: column + 1, type: "error", text: `Unknown numeric literal type ${numstr}, default to ${defaultErrorNumber}`})
@@ -714,6 +791,9 @@ const URCL = function(){
 							continue
 						}
 						if (`'"`.includes(char)) {
+							let scolumn = column
+							let srow = row
+							let si = i
 							const escapes = {
 								"n": "\n",
 								"r": "\r",
@@ -763,6 +843,9 @@ const URCL = function(){
 							continue
 						}
 						if (char == "@") {
+							let scolumn = column
+							let srow = row
+							let si = i
 							let str = ""
 							i += 1
 							column += 1
@@ -777,6 +860,9 @@ const URCL = function(){
 							continue
 						}
 						if (char == ".") {
+							let scolumn = column
+							let srow = row
+							let si = i
 							let str = ""
 							i += 1
 							column += 1
@@ -791,6 +877,9 @@ const URCL = function(){
 							continue
 						}
 						if (char == "%") {
+							let scolumn = column
+							let srow = row
+							let si = i
 							let str = ""
 							i += 1
 							column += 1
@@ -805,19 +894,24 @@ const URCL = function(){
 							continue
 						}
 
-						let str = ""
-						let char1 = raw[i]
-						while (i < L && !char1.match(/\s/)) {
-							if (char1 == "/") {
-								let next = raw[i + 1]
-								if (next == "/" || next =="*") {
-									break
+						{
+							let scolumn = column
+							let srow = row
+							let si = i
+							let str = ""
+							let char1 = raw[i]
+							while (i < L && !char1.match(/\s/)) {
+								if (char1 == "/") {
+									let next = raw[i + 1]
+									if (next == "/" || next =="*") {
+										break
+									}
 								}
+								str += char1
+								i += 1
+								column += 1
+								char1 = raw[i]
 							}
-							str += char1
-							i += 1
-							column += 1
-							char1 = raw[i]
 						}
 						arr.push(new Token("wrd", str, scolumn, srow, si))
 					}
@@ -877,8 +971,6 @@ const URCL = function(){
 
 			}
 			lines.push(line)
-
-			console.log(lines)
 
 			if (unrecoverable) {
 				this.editor.getSession().setAnnotations(annotations)
@@ -1015,6 +1107,30 @@ const URCL = function(){
 				"SMAX":  new Token("num", (2 ** (definitions["BITS"].value - 1)) - 1, definitions["BITS"].column, definitions["BITS"].row, definitions["BITS"].i),
 				"UHALF": new Token("num", ((2 ** (Math.floor(definitions["BITS"].value / 2))) - 1) << Math.ceil(definitions["BITS"].value / 2), definitions["BITS"].column, definitions["BITS"].row, definitions["BITS"].i),
 				"LHALF": new Token("num", (2 ** (Math.ceil(definitions["BITS"].value / 2))) - 1, definitions["BITS"].column, definitions["BITS"].row, definitions["BITS"].i),
+				A:       new Token("num", 1 <<  0, -1, -1, -1),
+				B:       new Token("num", 1 <<  1, -1, -1, -1),
+				SELECT:  new Token("num", 1 <<  2, -1, -1, -1),
+				START:   new Token("num", 1 <<  3, -1, -1, -1),
+				LEFT:    new Token("num", 1 <<  4, -1, -1, -1),
+				RIGHT:   new Token("num", 1 <<  5, -1, -1, -1),
+				UP:      new Token("num", 1 <<  6, -1, -1, -1),
+				DOWN:    new Token("num", 1 <<  7, -1, -1, -1),
+				Y:       new Token("num", 1 <<  8, -1, -1, -1),
+				X:       new Token("num", 1 <<  9, -1, -1, -1),
+				LB:      new Token("num", 1 << 10, -1, -1, -1),
+				RB:      new Token("num", 1 << 11, -1, -1, -1),
+				LEFT2:   new Token("num", 1 << 12, -1, -1, -1),
+				RIGHT2:  new Token("num", 1 << 13, -1, -1, -1),
+				UP2:     new Token("num", 1 << 14, -1, -1, -1),
+				DOWN2:   new Token("num", 1 << 15, -1, -1, -1),
+				LT:      new Token("num", 1 << 16, -1, -1, -1),
+				RT:      new Token("num", 1 << 17, -1, -1, -1),
+				LStick:  new Token("num", 1 << 18, -1, -1, -1),
+				RStick:  new Token("num", 1 << 19, -1, -1, -1),
+				LEFT_X:  new Token("num", 1 <<  0, -1, -1, -1),
+				LEFT_Y:  new Token("num", 1 <<  1, -1, -1, -1),
+				RIGHT_X: new Token("num", 1 <<  2, -1, -1, -1),
+				RIGHT_Y: new Token("num", 1 <<  3, -1, -1, -1),
 			}}
 
 			const DEFINITIONS_ = {}
@@ -1029,8 +1145,6 @@ const URCL = function(){
 			DEFINITIONS["wrd sp"] = new Token("reg", -2, -1, -1, -1)
 			DEFINITIONS["wrd PC"] = new Token("reg", -1, -1, -1, -1)
 			DEFINITIONS["wrd SP"] = new Token("reg", -2, -1, -1, -1)
-
-			console.log(userdefinitions, DEFINITIONS)
 
 			j = 0
 			while (j < lines.length) {
@@ -1144,12 +1258,12 @@ const URCL = function(){
 				j += 1
 			}
 
+			console.log(data)
+
 			for (let p of pendingLabels) {
 				annotations.push({column: p.column + 1, row: p.row + 1, type: "warning", text: "Label at EOF treated as instruction label"})
 				labels[p.value] = instructions.length
 			}
-
-			console.log(instructions, data, labels)
 			
 			if (unrecoverable) {
 				console.error(annotations)
@@ -1157,46 +1271,42 @@ const URCL = function(){
 				return
 			}
 
+			let MASK = (2 ** BITS) - 1
+
+			const LIM = [8, 16, 32].includes(BITS) ? "" : `& ${MASK}`
+
 			function arg(argm) {
 				switch (argm.type) {
 				case "num":
-					return `(${argm.value})`
+					return `(${argm.value} ${LIM})`
 					break
 				case "reg":
 					if (argm.value == 0) {
-						console.error(argm)
 						return `0`
 					}else if (argm.value >= 0) {
-						const s = `this.registers[${argm.value}]`;
-						return `(` + s + `)`
+						const s = `(this.registers[${argm.value}] ${LIM})`;
 					} else if (argm.value == -1) {
-						const s = `this.pc`;
-						return `(` + s + `)`
+						const s = `(this.pc)`;
 					} else if(argm.value == -2) {
-						const s = `this.sp`;
-						return `(` + s + `)`
+						const s = `(this.sp)`;
 					}
 					break
 				case "mem":
-					return `${argm.value}`
+					return `(${argm.value} ${LIM})`
 					break
 				case "prt":
-					return `${PORTS[argm.value.toUpperCase()]} /* ${argm.value} */`
+					return `(${PORTS[argm.value.toUpperCase()]} /* ${argm.value} */ ${LIM})`
 				case "lbl": {
-					console.log(argm.value, labels)
 					if (!(argm.value in labels)) {
 						annotations.push({row: argm.row, column: argm.column, text: `Unknown label ${arg.value}`, type: `error`})
 					}
-					const s = `${labels[argm.value]}`;
-					return `(` + s + `)`
+					return `(${labels[argm.value]} ${LIM})`;
 					}
 				case "str":
 					return argm.value.codePointAt(0)
 				}
 				return `null`
 			}
-
-			let MASK = (2 ** BITS) - 1
 
 			function assign(dest, value) {
 				if (dest === undefined) {
@@ -1212,16 +1322,16 @@ const URCL = function(){
 					if (dest.value == 0) {
 						return `${value};`
 					} else if (dest.value > 0) {
-						const s = `${value}`;
-						if (BITS == 8 || BITS == 16 || BITS == 32) {
-							return `this.registers[${dest.value}] = ${s};`
-						} else {
-							return `this.registers[${dest.value}] = (${s}) & ${MASK};`
-						}
+						// if (BITS == 8 || BITS == 16 || BITS == 32) {
+						// 	return `this.registers[${dest.value}] = ${s};`
+						// } else {
+						// 	return `this.registers[${dest.value}] = (${s}) & ${MASK};`
+						// }
+						return `this.registers[${dest.value}] = (${value}) ${LIM};`
 					} else if (dest.value == -1) {
-						return `this.pc = (${value});`
+						return `this.pc = (${value}) ${LIM};`
 					} else if(dest.value == -2) {
-						return `this.sp = (${value});`
+						return `this.sp = (${value}) ${LIM};`
 					}
 					break
 				case "mem":
@@ -1580,7 +1690,7 @@ case "DIV":
 		annotations.push({column: opcode.column, row: opcode.row, type: "error", text: `Expected 3 operands for instruction ${opcode.value}`})
 		unrecoverable = true
 	} else {
-		instr += assign(args[0], `${arg(args[2])} === 0 ? this.mask : (${arg(args[1])} >>> 0) / (${arg(args[2])} >>> 0)`)
+		instr += assign(args[0], `${arg(args[2])} === 0 ? this.mask : this.toSigned(${arg(args[1])}) / this.toSigned(${arg(args[2])})`)
 	}
 	break;
 case "MOD":
@@ -1789,6 +1899,7 @@ case "IN": // IO
 		unrecoverable = true
 	} else {
 		instr += `
+			this.pc--;
 			if (cbvalue !== undefined) {
 				${assign(args[0], `cbvalue`)};
 				this.pc   = ${i + 1}
@@ -1850,7 +1961,7 @@ case "UMLT":
 		annotations.push({column: opcode.column, row: opcode.row, type: "error", text: `Expected 3 operands for instruction ${opcode.value}`})
 		unrecoverable = true
 	} else {
-		instr += assign(args[0], `(${arg(args[1])} * ${arg(args[2])}) / (2 ** this.bits)`)
+		instr += assign(args[0], `Number((BigInt(${arg(args[1])}) * BigInt(${arg(args[2])})) >>> ${BITS}n)`)
 	}
 	break;
 case "SUMLT":
@@ -1883,15 +1994,13 @@ default:
 	        run += `}\nreturn [${0}, i, null]`;
 
 			this.editor.getSession().setAnnotations(annotations)
-	        console.log(annotations)
 
 	        if (unrecoverable) {
+	        	console.log(annotations)
 	        	return
 	        }
 
 	        const DATA = []
-
-	        console.log(data)
 
 	        for (let d of data) {
 	        	switch (d.type) {

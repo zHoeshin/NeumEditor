@@ -322,7 +322,7 @@ window["RuntimeManager"] = function() {
 	let runnable = false
 	let running = false
 
-	let input = 0
+	let input = undefined
 
 	let totalcount = 0
 	let count = 0
@@ -332,8 +332,9 @@ window["RuntimeManager"] = function() {
 	const self = {
 		compile() {
 			if (state != StateNone) {
-				console.warn("Compiling while running")
-				return false
+				// console.warn("Compiling while running")
+				// return false
+				self.break()
 			}
 			if (animationframe != -1) {
 				console.warn("Compiling while animation frame present")
@@ -385,6 +386,8 @@ window["RuntimeManager"] = function() {
 			}
 
 			const [result, c, callback] = runtime.burst(15, input)
+			runtime.markCurrentLine(runtime.getLine())
+			input = undefined
 			const e = performance.now()
 
 			totalcount += c
@@ -441,12 +444,13 @@ window["RuntimeManager"] = function() {
 
 		step() {
 			if (!runnable || running) {
-				return
+				return 1
 			}
 			if (state == StateInput) {
-				return
+				return 2
 			}
 			const [result, c, f] = runtime.step(input)
+			input = undefined
 			console.log(runtime.getLine(), runtime)
 			runtime.markCurrentLine(runtime.getLine())
 
@@ -471,6 +475,13 @@ window["RuntimeManager"] = function() {
 				f?.()
 				break
 	        }
+		},
+
+		pause() {
+			runtime.markCurrentLine(runtime.getLine())
+			cancelAnimationFrame(animationframe)
+			animationframe = -1
+			running = false
 		},
 
 		sendInput(value) {

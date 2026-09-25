@@ -79,7 +79,7 @@ window.Devices["ScreenDevice"] = window["ScreenDevice"] = function () {
 		},
 	}
 
-	let currentColorSpace = colorSpaces.RGB565
+	let currentColorSpace = colorSpaces.Monochrome
 
 	const self = {
 		init() {
@@ -95,8 +95,8 @@ window.Devices["ScreenDevice"] = window["ScreenDevice"] = function () {
 				self.prepare()
 			}
 			document.querySelector("select#screencolormode").onchange = (e) => {
-				colorprocessor = processors[document.querySelector("select#screencolormode").value]
-				updateColorProcessor()
+				currentColorSpace = colorSpaces[document.querySelector("select#screencolormode").value]
+				self.updateColorProcessor()
 			}
 
 			width = canvas.width
@@ -105,6 +105,25 @@ window.Devices["ScreenDevice"] = window["ScreenDevice"] = function () {
 			self.prepare()
 
 			return self
+		},
+
+
+		updateColorProcessor() {
+			for (let y = 0; y < canvas.height; y++) {
+				for(let x = 0; x < canvas.width; x++) {
+					const index = (y * canvas.width + x) * 4
+					const color = (( rawbuffer.data[(y * canvas.width + x) * 4] << 24) |
+							       ( rawbuffer.data[(y * canvas.width + x) * 4 + 1] << 16) | 
+							       ( rawbuffer.data[(y * canvas.width + x) * 4 + 2] << 8) |
+							         rawbuffer.data[(y * canvas.width + x) * 4 + 3])
+					const [r, g, b, a] = currentColorSpace(color)
+					buffer.data[index]     = r
+					buffer.data[index + 1] = g
+					buffer.data[index + 2] = b
+					buffer.data[index + 3] = a 
+				}
+			}
+			ctx.putImageData(buffer, 0, 0)
 		},
 
 		prepare() {
@@ -152,6 +171,9 @@ window.Devices["ScreenDevice"] = window["ScreenDevice"] = function () {
 	        (rawimagedata.data[(y * canvas.width + x) * 4 + 2] << 8) |
 	        rawimagedata.data[(y * canvas.width + x) * 4 + 3]) >>> 0
 		},
+
+		getCanvas() {return canvas},
+		getImage() {return buffer},
 
 		swap() {
 			buffer.data.set(imagedata.data.slice())
