@@ -354,6 +354,7 @@ div#consolefgwrapper{
 }
 
 pre#consoletext {
+	overflow: clip;
 	aspect-ratio: inherit;
 	font-size: inherit;
 	image-rendering: pixelated;
