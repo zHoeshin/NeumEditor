@@ -220,6 +220,32 @@ div.editorwrapper.hidden {
 
 
 
+::-webkit-scrollbar {
+  width: 2px;
+  height: 2px;
+}
+
+::-webkit-scrollbar-track {
+  background: gray;
+}
+
+::-webkit-scrollbar-thumb {
+  background: white;
+}
+
+::-webkit-scrollbar-button {
+  display: none;
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+
+
+
+
+
 div#screen {
 	display: flex;
 	flex-direction: column;
@@ -252,25 +278,36 @@ canvas.screen {
 
 
 .device#console {
+	font-family: monospace;
 	display: flex;
 	margin: 0.5em;
+	width: calc(100% - 1em);
+	height: calc(100% - 1em);
 	position: relative;
+	flex: 1 1 0;
+	container-type: inline-size;
+	overflow-y: scroll;
 }
 div#consolewrapper {
-	position: absolute;
 	font-family: monospace;
+	min-width: 0;
+	--font-aspect-ratio: calc(tan(atan2(1ch, 1px)) / tan(atan2(1em, 1px)));
+	position: absolute;
     line-height: 1.1em;
     /*width: 100%;*/
+    width: 100cqw;
     /*height: 100%;*/
-	/*font-size: calc(100cqw / var(--w) / (tan(atan2(1ch, 1px)) / tan(atan2(1em, 1px)))); */
-	width: calc(var(--w) * 1ch);
-	height: calc(var(--h) * 1.1em);
+	/*width: calc(var(--w) * 1ch);*/
+	/*aspect-ratio: calc((var(--w) * 1ch) / (var(--h) * 1.1em));*/
+	aspect-ratio: calc(var(--w) / (var(--h) * 1.1) * var(--font-aspect-ratio));
 	/*aspect-ratio: calc((var(--w) * tan(atan2(1ch, 1px))) / (var(--h) * tan(atan2(1.1em, 1px))));*/
+	font-size: calc(100cqw / (var(--w) * var(--font-aspect-ratio)));
 	flex-shrink: 1;
 	flex-grow: 1;
 	isolation: isolate;
 }
 canvas#consolefg {
+	aspect-ratio: inherit;
 	inset: 0;
 	display: none;
 	image-rendering: pixelated;
@@ -283,6 +320,7 @@ canvas#consolefg {
 	will-change: transform;
 }
 canvas#consolebg {
+	aspect-ratio: inherit;
 	image-rendering: pixelated;
 	width: inherit;
 	height: inherit;
@@ -291,6 +329,7 @@ canvas#consolebg {
 	background-color: transparent !important;
 }
 div#consoletext {
+	aspect-ratio: inherit;
 	font-size: inherit;
 	width: inherit;
 	height: inherit;
@@ -298,6 +337,7 @@ div#consoletext {
 	/*isolation: isolate;*/
 }
 div#consoletextbg {
+	aspect-ratio: inherit;
 	width: inherit;
 	height: inherit;
     position: absolute;
@@ -305,6 +345,7 @@ div#consoletextbg {
 }
 
 div#consolefgwrapper{
+	aspect-ratio: inherit;
 	width: inherit;
 	height: inherit;
 	position: absolute;
@@ -313,6 +354,7 @@ div#consolefgwrapper{
 }
 
 pre#consoletext {
+	aspect-ratio: inherit;
 	font-size: inherit;
 	image-rendering: pixelated;
 	image-rendering: crisp-edges;
@@ -330,6 +372,7 @@ pre#consoletext {
 }
 
 pre#consoletextbg {
+	aspect-ratio: inherit;
 	background-color: #ffffff;
 	position: absolute;
 	color: transparent;
@@ -340,10 +383,11 @@ pre#consoletextbg {
 	margin: 0;
 }
 
-pre#consoletext::selection {
+/*pre#consoletext::selection {
 	color: #ffffff80;
-}
+}*/
 canvas#consoleselection {
+	aspect-ratio: inherit;
 	display: none;
 	image-rendering: pixelated;
 	width: inherit;
@@ -352,11 +396,28 @@ canvas#consoleselection {
     mix-blend-mode: difference;
 }
 
+
+div#consolecursor {
+	aspect-ratio: inherit;
+    position: absolute;
+    width: 1ch;
+    height: 0.2em;
+    mix-blend-mode: difference;
+    top: calc(0.0em + var(--y) * 1.1em + 1.1em - 0.2em);
+    left: calc(0.0em + var(--x) * 1ch);
+    backdrop-filter: invert(1);
+    pointer-events: none;
+    z-index: 10;
+    font-family: inherit;
+    font-size: inherit;
+}
+
+
 pre#consoletext > span {
-    text-shadow: 0.05px 0 0 rgba(currentColor, 0.25);
+    /*text-shadow: 0.05px 0 0 rgba(currentColor, 0.25);*/
 }
 pre#consoletext > span.b {
-    font-weight: bolder;
+    font-weight: bold;
     text-shadow: 0.5px 0 0 currentColor;
 }
 pre#consoletext > span.f {

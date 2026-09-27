@@ -64,11 +64,11 @@ const PORTS = {
 	"MOUSE_WHEEL": 74,
 	"MOUSE_BUTTONS": 75,
 
-	"%CURKEY": 65,
-	"%CURKEYCODE": 66,
-	"%KEY": 67,
-	"%CURCODEPOINT": 68,
-	"%GAMEPAD": 80,
+	"CURKEY": 65,
+	"CURKEYCODE": 66,
+	"KEY": 67,
+	"CURCODEPOINT": 68,
+	"GAMEPAD": 80,
 };
 
 class URCLMachine {
@@ -208,6 +208,7 @@ class URCLMachine {
         //     console.error(`Heap overflow on load: ${addr} >= ${this.memorysize}`);
         //     return 0
         // }
+        // console.warn(this.memory[addr], "at", addr)
         return this.memory[addr];
     }
 
@@ -229,7 +230,7 @@ class URCLMachine {
 		case PORTS.WAIT:
 			return ()=>TimerDevice.wait(this.wait)
 		case PORTS.RNG:
-			return Math.random() & this.mask
+			return Math.random() * this.mask
 		case PORTS.MOUSE_X:
 			return MouseDevice.getX()
 			break;
@@ -529,6 +530,8 @@ const URCL = function(){
 					this.i = _i
 				}
 				get key() {
+					if (this.type == "def") return `def ${this.value.toUpperCase()}`
+					if (this.type == "prt") return `prt ${this.value.toUpperCase()}`
 					return `${this.type} ${this.value}`
 				}
 			}
@@ -784,19 +787,19 @@ const URCL = function(){
 							}
 							numstr = numstr.replace(/_/g, "")
 							if (numstr.match(/^[+-]?\d+$/)) {
-								line.push(new Token("num", parseInt(numstr, 10), scolumn, srow, si))
+								arr.push(new Token("num", parseInt(numstr, 10), scolumn, srow, si))
 								continue
 							}
 							if (numstr.match(/^[+-]?0x[A-F0-9]+$/i)) {
-								line.push(new Token("num", parseInt(numstr.replace(/0x/ig, ""), 16), scolumn, srow, si))
+								arr.push(new Token("num", parseInt(numstr.replace(/0x/ig, ""), 16), scolumn, srow, si))
 								continue
 							}
 							if (numstr.match(/^[+-]?0b[01]+$/i)) {
-								line.push(new Token("num", parseInt(numstr.replace(/0b/ig, ""), 2), scolumn, srow, si))
+								arr.push(new Token("num", parseInt(numstr.replace(/0b/ig, ""), 2), scolumn, srow, si))
 								continue
 							}
 							if (numstr.match(/^[+-]?0o[01234567]+$/i)) {
-								line.push(new Token("num", parseInt(numstr.replace(/0o/ig, ""), 8), scolumn, srow, si))
+								arr.push(new Token("num", parseInt(numstr.replace(/0o/ig, ""), 8), scolumn, srow, si))
 								continue
 							}
 							annotations.push({row: row + 1, column: column + 1, type: "error", text: `Unknown numeric literal type ${numstr}, default to ${defaultErrorNumber}`})
@@ -1217,7 +1220,7 @@ const URCL = function(){
 						pendingLabels = []
 						for (let arg of line.slice(1)) {
 							if (arg.key in DEFINITIONS) {
-								arg = DEFINITIONS[arg]
+								arg = DEFINITIONS[arg.key]
 							}
 							if (arg.type == "arr") {
 								for (let argn of arg.value) {
@@ -1230,7 +1233,7 @@ const URCL = function(){
 									} else if (argn.type == "str" ) {
 										const utf8 = new TextEncoder().encode(argn.value)
 										for (let b of utf8) {
-											data.push(new Token("chr", b, arg.column, arg.row, arg.i))
+											data.push(new Token("chr", b, argn.column, argn.row, argn.i))
 										}
 									} else {
 										data.push(argn)
@@ -2013,6 +2016,8 @@ default:
 	        	return
 	        }
 
+	        console.log(labels)
+
 	        const DATA = []
 
 	        for (let d of data) {
@@ -2027,6 +2032,15 @@ default:
 	        		for (const char of d.value) {
 	        			DATA.push(char.codePointAt(0))
 	        		}
+	        		break
+	        	case "lbl":
+	        		DATA.push(labels[d.value] ?? -1)
+	        		break
+	        	case "def":
+	        		DATA.push(DEFINITIONS[d.key] ?? -1)
+	        		break
+	        	case "prt":
+	        		DATA.push(PORTS[d.value] ?? -1)
 	        		break
 	        	default:
 	        		break

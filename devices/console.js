@@ -1,9 +1,13 @@
+"use strict";
+
 window.Devices["ConsoleDevice"] = window["ConsoleDevice"] = function() {
 	const bgCanvas = document.querySelector("canvas#consolebg")
 	const fgCanvas = document.querySelector("canvas#consolefg")
 	const textWrapper = document.querySelector("pre#consoletext")
 	const bgtextWrapper = document.querySelector("pre#consoletextbg")
 	const selectionCanvas = document.querySelector("canvas#consoleselection")
+
+	const cursorElement = document.querySelector("div#consolecursor")
 
 	const wrapper = document.querySelector("div#consolewrapper")
 
@@ -65,11 +69,14 @@ window.Devices["ConsoleDevice"] = window["ConsoleDevice"] = function() {
 
 		outRawChar(char) {
 			if (char == "\n") {
-				x = width - 1
-				textBuffer[y * width + x] = "\n"
-				styleBuffer[y * width + x] = currentStyle
-				fgBuffer[y * width + x] = currentFg
-				bgBuffer[y * width + x] = currentBg
+				while (x < width) {
+					textBuffer[y * width + x] = ""
+					styleBuffer[y * width + x] = currentStyle
+					fgBuffer[y * width + x] = currentFg
+					bgBuffer[y * width + x] = currentBg
+					x++
+				}
+				textBuffer[y * width + width - 1] = "\n"
 				y += 1
 				x = 0
 			} else {
@@ -143,18 +150,36 @@ window.Devices["ConsoleDevice"] = window["ConsoleDevice"] = function() {
 						//consoleoutput.innerText = ""
 						{
 							const c = codes[0] ?? 0
+							if (c == 2) {
+								self.moveCursor(0, 0, false)
+								textBuffer.fill("")
+								styleBuffer.fill("")
+								bgBuffer.fill(currentBg)
+								fgBuffer.fill(currentFg)
+								// bgContext.putImageData(bgImageData, 0, 0)
+								// fgContext.putImageData(fgImageData, 0, 0)
+								// textWrapper.innerText = ""
+								// textWrapper.style.backgroundImage = "none"
+							} else
 							if (c % 2 == 0) {
 								for(let i = 0; i < y * width + x; i++) {
-									textBuffer[i] = ""
+									if (i % width == 0) {
+										textBuffer[i] = "\n"
+									} else {
+										textBuffer[i] = ""
+									}
+									bgBuffer[i] = currentBg
+									fgBuffer[i] = currentFg
+									styleBuffer[i] = currentStyle
 								}
-							}
+							} else
 							if (c % 2 > 0) {
 								for(let i = y * width + x; i < width * height; i++) {
 									textBuffer[i] = ""
+									bgBuffer[i] = currentBg
+									fgBuffer[i] = currentFg
+									styleBuffer[i] = currentStyle
 								}
-							}
-							if (c == 2) {
-								self.moveCursor(0, 0, false)
 							}
 						}
 						break
@@ -173,13 +198,13 @@ window.Devices["ConsoleDevice"] = window["ConsoleDevice"] = function() {
 					case "C": // left
 						{
 							const c = codes[0] ?? 1
-							self.moveCursor(c, 0, true)
+							self.moveCursor(-c, 0, true)
 						}
 						break
 					case "D": // right
 						{
 							const c = codes[0] ?? 1
-							self.moveCursor(-c, 0, true)
+							self.moveCursor(c, 0, true)
 						}
 						break
 					
@@ -264,18 +289,22 @@ window.Devices["ConsoleDevice"] = window["ConsoleDevice"] = function() {
 							self.outRawChar(c)
 						}
 						break
+						needsSwap = true
 					}
 
 					handlingAnsi = false
 					ansi = ""
+					needsSwap = true
 
 				} else {
 					handlingAnsi = false
 					ansi = ""
+					needsSwap = true
 				}
 			} else {
 				if (char == "\x1b") {
 					handlingAnsi = true
+					needsSwap = false
 				} else {
 					self.outRawChar(char)
 				}
@@ -290,10 +319,23 @@ window.Devices["ConsoleDevice"] = window["ConsoleDevice"] = function() {
 			self.flush()
 		},
 
+		printRaw(...args) {
+			for(const char of args.join("")) {
+				self.outChar(char)
+			}
+			self.flush()
+		},
+
+		getCursorPosition() {
+			return [x, y]
+		},
+
 		flush() {
 			if (!needsSwap) {
 				return
 			}
+			cursorElement.style.setProperty("--x", x)
+			cursorElement.style.setProperty("--y", y)
 
 			bgContext.putImageData(bgImageData, 0, 0)
 			fgContext.putImageData(fgImageData, 0, 0)
@@ -334,7 +376,13 @@ window.Devices["ConsoleDevice"] = window["ConsoleDevice"] = function() {
 			textWrapper.replaceChildren(...spans)
 			textWrapper.style.backgroundImage = `url(${fgCanvas.toDataURL("image/png")})`
 			// bgtextWrapper.textContent = textBuffer.join("")
+
+			needsSwap = false
 		},
+
+		needSwap() {
+			return needsSwap
+		}
 	}
 
 	return self.init
