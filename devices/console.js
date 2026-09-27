@@ -30,7 +30,7 @@ window.Devices["ConsoleDevice"] = window["ConsoleDevice"] = function() {
 	let currentStyle = ""
 
 	let width = 80
-	let height = 52
+	let height = 24
 
 	let x = 0
 	let y = 0
@@ -86,7 +86,8 @@ window.Devices["ConsoleDevice"] = window["ConsoleDevice"] = function() {
 					x++
 				}
 
-				textBuffer[y * width + width - 1] = textBuffer[y * width + width - 1].replace(/\n+$/, "") + "\n"
+				// textBuffer[y * width + width - 1] = textBuffer[y * width + width - 1].replace(/\n+$/, "") + "\n"
+				textBuffer[y * width + width - 1] = textBuffer[y * width + width - 1][0] ?? "" + "\n"
 				x = 0
 				y += 1
 				// if (!textBuffer[y * width + width - 1].includes("\n")) {
@@ -96,7 +97,7 @@ window.Devices["ConsoleDevice"] = window["ConsoleDevice"] = function() {
 				// 	x = 0
 				// }
 			} else {
-				if (x > width) {
+				if (x >= width) {
 					x = 0
 					y += 1
 					if (y >= height) {
@@ -136,6 +137,10 @@ window.Devices["ConsoleDevice"] = window["ConsoleDevice"] = function() {
 				bgBuffer.fill(currentBg, (height - 1) * width, height * width)
 				y -= 1
 			}
+			if (!textBuffer[y * width + width - 1].includes("\n")) {
+				textBuffer[y * width + width - 1] = textBuffer[y * width + width - 1] + "\n"
+			}
+			self.fixLeadingNull()
 		},
 
 
@@ -146,6 +151,36 @@ window.Devices["ConsoleDevice"] = window["ConsoleDevice"] = function() {
 			} else if (relative) {
 				x = Math.max(0, Math.min(width - 1, x + dx))
 				y = Math.max(0, Math.min(height - 1, y + dy))
+			}
+			for (let i = 0; i < x; i++) {
+				if (textBuffer[y * width + i] == "") {
+					textBuffer[y * width + i] = "\0"
+					styleBuffer[y * width + i] = currentStyle
+					bgBuffer[y * width + i] = currentBg
+					fgBuffer[y * width + i] = currentFg
+				}
+				if (!textBuffer[y * width + width - 1].includes("\n")) {
+					textBuffer[y * width + width - 1] = textBuffer[y * width + width - 1] + "\n"
+				}
+			}
+			self.fixLeadingNull()
+		},
+
+		fixLeadingNull() {
+			let hasletter = false
+			for (let i = x - 1; i > 0; i--) {
+				const c = textBuffer[y * width + i]
+				if (c.length > 0 && c != "\0") {
+					hasletter = true
+				}
+				if (hasletter) {
+					if (textBuffer[y * width + i] == "" || textBuffer[y * width + i] == "\0") {
+						textBuffer[y * width + i] = " "
+						styleBuffer[y * width + i] = currentStyle
+						bgBuffer[y * width + i] = currentBg
+						fgBuffer[y * width + i] = currentFg
+					}
+				}
 			}
 		},
 
@@ -158,6 +193,31 @@ window.Devices["ConsoleDevice"] = window["ConsoleDevice"] = function() {
 		},
 		styleRemove(s) {
 			currentStyle = currentStyle.replace(s, "")
+		},
+
+		outCodePoint(cp) {
+			if ((cp & 0b11111111111111111111111110000000) == 0b10000000) {
+				switch (cp) {
+				case 37 | 0b10000000:
+					self.moveCursor(-1, 0, true)
+					needsSwap = true
+					break;
+				case 38 | 0b10000000:
+					self.moveCursor(0, -1, true)
+					needsSwap = true
+					break;
+				case 39 | 0b10000000:
+					self.moveCursor(1, 0, true)
+					needsSwap = true
+					break;
+				case 40 | 0b10000000:
+					self.moveCursor(0, 1, true)
+					needsSwap = true
+					break;
+				}
+			} else {
+				self.outChar(String.fromCodePoint(cp))
+			}
 		},
 
 		outChar(char) {
@@ -458,6 +518,14 @@ window.Devices["ConsoleDevice"] = window["ConsoleDevice"] = function() {
 				}
 				let o = textBuffer[y * width + x]
 				textBuffer[y * width + x] = o.substring(0, o.length - 1)
+				if (o.length > 1) {
+					x += 1
+				}
+				console.log(textBuffer.slice(y * width, width))
+				while (x > 0 && (textBuffer[y * width + x - 1] == "\0" || textBuffer[y * width + x - 1] == "")) {
+					textBuffer[y * width + x] = ""
+					x -= 1
+				}
 				// if (textBuffer[y * width + x].length == 0) {
 				// 	x -= 1
 				// 	if (x < 0) {

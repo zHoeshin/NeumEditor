@@ -116,6 +116,12 @@ window["KeyboardDevice"] = window.Devices["KeyboardDevice"] = function(){
     const special = {
     	"Enter": 10,
     	"Escape": 0x1b,
+    	"Tab": 0x09,
+    	"Backspace": "\b".codePointAt(0),
+    	"ArrowUp": 38 | 0b10000000,
+    	"ArrowDown": 40 | 0b10000000,
+    	"ArrowLeft": 37 | 0b10000000,
+    	"ArrowRight": 39 | 0b10000000,
     }
 
     const self = {
@@ -144,9 +150,11 @@ window["KeyboardDevice"] = window.Devices["KeyboardDevice"] = function(){
 	        const k = usb[e.code];
 	        if (k !== undefined) {
 	            down[k] = 0;
-	            currentusb = 0
-	            currentkeycode = 0
-	            currentcodepoint = 0
+	            if (currentusb == k) {
+		            currentusb = 0
+		            currentkeycode = 0
+		            currentcodepoint = 0
+	            }
 	        }
 	    },
 
@@ -165,9 +173,11 @@ window["KeyboardDevice"] = window.Devices["KeyboardDevice"] = function(){
 	        const k = usb[e.code];
 	        if (k !== undefined) {
 	            down[k] = 0;
-	            currentusb = 0
-	            currentkeycode = 0
-	            currentcodepoint = 0
+	            if (currentusb == k) {
+		            currentusb = 0
+		            currentkeycode = 0
+		            currentcodepoint = 0
+	            }
 	        }
 	    },
 
@@ -204,21 +214,21 @@ window["KeyboardDevice"] = window.Devices["KeyboardDevice"] = function(){
 			return currentusb
 		},
 		setCurrentUSB(k = 0) {
-			currentusb = 0
+			currentusb = k
 		},
 		
 		getCurrentKeycode() {
 			return currentkeycode
 		},
 		setCurrentKeycode(k = 0) {
-			currentkeycode = 0
+			currentkeycode = k
 		},
 		
 		getCurrentCodepoint() {
 			return currentcodepoint
 		},
 		setCurrentCodepoint(k = 0) {
-			currentcodepoint = 0
+			currentcodepoint = k
 		},
 
 		getConstants() {

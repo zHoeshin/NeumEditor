@@ -305,7 +305,7 @@ class URCLMachine {
 			KeyboardDevice.setOffset(value)
 			break
 		case PORTS.TEXT:
-			ConsoleDevice.outChar(String.fromCodePoint(value))
+			ConsoleDevice.outCodePoint(value)
 			break
 		case PORTS.NUMB:
 			for(const char of `${value}`) {
