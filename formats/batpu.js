@@ -514,7 +514,8 @@ const BatPU = function(){
 					}
 					i += 1
 					column += 1
-					line.push(new Token("str", escapeString(str), scolumn, srow, si))
+					// line.push(new Token("str", escapeString(str), scolumn, srow, si))
+					line.push(new Token("num", escapeString(str).codePointAt(0), scolumn, srow, si))
 					continue
 				}
 				if (c == ".") {
@@ -528,7 +529,7 @@ const BatPU = function(){
 						column += 1
 						char = raw[i]
 					}
-					line.push(new Token("lbl", str, scolumn, srow, si))
+					line.push(new Token("lbl", str.toLowerCase(), scolumn, srow, si))
 					continue
 				}
 				if (c == "/") {
@@ -654,12 +655,12 @@ const BatPU = function(){
 								annotations.push({column: line[0].column + 1, row: line[0].row + 1, type: "error", text: `Expected definition name and value only`})
 							}
 							break
-						case "ASSERT":
-						case "ASSERT_N":
-						case "ASSERT_EQ":
-						case "ASSERT_NEQ":
-							null
-							break
+						// case "ASSERT":
+						// case "ASSERT_N":
+						// case "ASSERT_EQ":
+						// case "ASSERT_NEQ":
+						// 	null
+						// 	break
 					}
 					j += 1
 					continue
@@ -842,6 +843,13 @@ const BatPU = function(){
 			}
 			
 
+			function gr(n) {
+				return n != 0 ? `this.registers[${n}]` : `0`
+			}
+			function sr(n) {
+				return n != 0 ? `this.registers[${n}] = ` : ``
+			}
+
 
 	        const max_duration = "max_duration";
 	        const callback_return_value = "cbvalue"
@@ -863,9 +871,25 @@ case "ADD":
 		annotations.push({column: opcode.column, row: opcode.row, type: "error", text: `Expected 3 operands for instruction ${opcode.value}`})
 		unrecoverable = true
 	} else {
-		instr += assign(args[2], `${arg(args[0])} + ${arg(args[1])}`)
-		instr += `this.carry = (${arg(args[0])} + ${arg(args[1])} > 255);`
-		instr += `this.zero = (((${arg(args[0])} + ${arg(args[1])}) & 0xff) == 0);`
+		if (args[0].type != "reg") {
+			annotations.push({column: args[0].column, row: args[0].row, type: "error", text: `Operand 1 must be a register`})
+			unrecoverable = true
+			break
+		}
+		if (args[1].type != "reg") {
+			annotations.push({column: args[1].column, row: args[1].row, type: "error", text: `Operand 2 must be a register`})
+			unrecoverable = true
+			break
+		}
+		if (args[2].type != "reg") {
+			annotations.push({column: args[2].column, row: args[2].row, type: "error", text: `Operand 3 must be a register`})
+			unrecoverable = true
+			break
+		}
+		let a = args[0].value
+		let b = args[1].value
+		let d = args[2].value
+		instr += `{let v = ${gr(a)} + ${gr(b)}; ${sr(d)} v; this.zero = (v & 0xff) == 0; this.carry = v > 0xff; }`
 	}
 	break;
 case "INC":
@@ -873,9 +897,13 @@ case "INC":
 		annotations.push({column: opcode.column, row: opcode.row, type: "error", text: `Expected 1 operands for instruction ${opcode.value}`})
 		unrecoverable = true
 	} else {
-		instr += assign(args[0], `${arg(args[0])} + 1`)
-		instr += `this.carry = (${arg(args[0])} > 254);`
-		instr += `this.zero = (((${arg(args[0])}) & 0xff) == 255);`
+		if (args[0].type != "reg") {
+			annotations.push({column: args[0].column, row: args[0].row, type: "error", text: `Operand 1 must be a register`})
+			unrecoverable = true
+			break
+		}
+		let a = args[0].value
+		instr += `{let v = ${gr(a)} + 1; ${sr(a)} v; this.zero = (v & 0xff) == 0; this.carry = v > 0xff; }`
 	}
 	break;
 case "DEC":
@@ -883,9 +911,13 @@ case "DEC":
 		annotations.push({column: opcode.column, row: opcode.row, type: "error", text: `Expected 1 operands for instruction ${opcode.value}`})
 		unrecoverable = true
 	} else {
-		instr += assign(args[0], `${arg(args[0])} - 1`)
-		instr += `this.carry = (${arg(args[0])} < 1);`
-		instr += `this.zero = (((${arg(args[0])}) & 0xff) == 1);`
+		if (args[0].type != "reg") {
+			annotations.push({column: args[0].column, row: args[0].row, type: "error", text: `Operand 1 must be a register`})
+			unrecoverable = true
+			break
+		}
+		let a = args[0].value
+		instr += `{let v = ${gr(a)} - 1; ${sr(a)} v; this.zero = (v & 0xff) == 0; this.carry = v < 0; }`
 	}
 	break;
 case "SUB":
@@ -893,9 +925,25 @@ case "SUB":
 		annotations.push({column: opcode.column, row: opcode.row, type: "error", text: `Expected 3 operands for instruction ${opcode.value}`})
 		unrecoverable = true
 	} else {
-		instr += assign(args[2], `${arg(args[0])} - ${arg(args[1])}`)
-		instr += `this.carry = (${arg(args[0])} - ${arg(args[1])} < 0);`
-		instr += `this.zero = (((${arg(args[0])} - ${arg(args[1])}) & 0xff) == 0);`
+		if (args[0].type != "reg") {
+			annotations.push({column: args[0].column, row: args[0].row, type: "error", text: `Operand 1 must be a register`})
+			unrecoverable = true
+			break
+		}
+		if (args[1].type != "reg") {
+			annotations.push({column: args[1].column, row: args[1].row, type: "error", text: `Operand 2 must be a register`})
+			unrecoverable = true
+			break
+		}
+		if (args[2].type != "reg") {
+			annotations.push({column: args[2].column, row: args[2].row, type: "error", text: `Operand 3 must be a register`})
+			unrecoverable = true
+			break
+		}
+		let a = args[0].value
+		let b = args[1].value
+		let d = args[2].value
+		instr += `{let v = ${gr(a)} - ${gr(b)}; ${sr(d)} v; this.zero = (v & 0xff) == 0; this.carry = v < 0; }`
 	}
 	break;
 case "NOR":
@@ -903,7 +951,25 @@ case "NOR":
 		annotations.push({column: opcode.column, row: opcode.row, type: "error", text: `Expected 3 operands for instruction ${opcode.value}`})
 		unrecoverable = true
 	} else {
-		instr += assign(args[2], `~(${arg(args[0])} | ${arg(args[1])})`)
+		if (args[0].type != "reg") {
+			annotations.push({column: args[0].column, row: args[0].row, type: "error", text: `Operand 1 must be a register`})
+			unrecoverable = true
+			break
+		}
+		if (args[1].type != "reg") {
+			annotations.push({column: args[1].column, row: args[1].row, type: "error", text: `Operand 2 must be a register`})
+			unrecoverable = true
+			break
+		}
+		if (args[2].type != "reg") {
+			annotations.push({column: args[2].column, row: args[2].row, type: "error", text: `Operand 3 must be a register`})
+			unrecoverable = true
+			break
+		}
+		let a = args[0].value
+		let b = args[1].value
+		let d = args[2].value
+		instr += `{let v = ~(${gr(a)} | ${gr(b)}); ${sr(d)} v; this.zero = (v & 0xff) == 0; this.carry = 0; }`
 	}
 	break;
 case "NOT":
@@ -911,7 +977,19 @@ case "NOT":
 		annotations.push({column: opcode.column, row: opcode.row, type: "error", text: `Expected 2 operands for instruction ${opcode.value}`})
 		unrecoverable = true
 	} else {
-		instr += assign(args[1], `~${arg(args[0])}`)
+		if (args[0].type != "reg") {
+			annotations.push({column: args[0].column, row: args[0].row, type: "error", text: `Operand 1 must be a register`})
+			unrecoverable = true
+			break
+		}
+		if (args[1].type != "reg") {
+			annotations.push({column: args[1].column, row: args[1].row, type: "error", text: `Operand 2 must be a register`})
+			unrecoverable = true
+			break
+		}
+		let a = args[0].value
+		let d = args[1].value
+		instr += `{this.zero = (${sr(d)} ~${gr(a)}) == 0; this.carry = 0; }`
 	}
 	break;
 case "NEG":
@@ -919,7 +997,19 @@ case "NEG":
 		annotations.push({column: opcode.column, row: opcode.row, type: "error", text: `Expected 2 operands for instruction ${opcode.value}`})
 		unrecoverable = true
 	} else {
-		instr += assign(args[1], `-${arg(args[0])}`)
+		if (args[0].type != "reg") {
+			annotations.push({column: args[0].column, row: args[0].row, type: "error", text: `Operand 1 must be a register`})
+			unrecoverable = true
+			break
+		}
+		if (args[1].type != "reg") {
+			annotations.push({column: args[1].column, row: args[1].row, type: "error", text: `Operand 2 must be a register`})
+			unrecoverable = true
+			break
+		}
+		let a = args[0].value
+		let d = args[1].value
+		instr += `{let v = -${gr(a)}; ${sr(b)} v; this.zero = (v & 0xff) == 0; this.carry = v < 0; }`
 	}
 	break;
 case "AND":
@@ -927,7 +1017,25 @@ case "AND":
 		annotations.push({column: opcode.column, row: opcode.row, type: "error", text: `Expected 3 operands for instruction ${opcode.value}`})
 		unrecoverable = true
 	} else {
-		instr += assign(args[2], `${arg(args[0])} & ${arg(args[1])}`)
+		if (args[0].type != "reg") {
+			annotations.push({column: args[0].column, row: args[0].row, type: "error", text: `Operand 1 must be a register`})
+			unrecoverable = true
+			break
+		}
+		if (args[1].type != "reg") {
+			annotations.push({column: args[1].column, row: args[1].row, type: "error", text: `Operand 2 must be a register`})
+			unrecoverable = true
+			break
+		}
+		if (args[2].type != "reg") {
+			annotations.push({column: args[2].column, row: args[2].row, type: "error", text: `Operand 3 must be a register`})
+			unrecoverable = true
+			break
+		}
+		let a = args[0].value
+		let b = args[1].value
+		let d = args[2].value
+		instr += `{let v = (${gr(a)} & ${gr(b)}); ${sr(d)} v; this.zero = (v & 0xff) == 0; this.carry = 0; }`
 	}
 	break;
 case "XOR":
@@ -935,7 +1043,25 @@ case "XOR":
 		annotations.push({column: opcode.column, row: opcode.row, type: "error", text: `Expected 3 operands for instruction ${opcode.value}`})
 		unrecoverable = true
 	} else {
-		instr += assign(args[2], `${arg(args[0])} ^ ${arg(args[1])}`)
+		if (args[0].type != "reg") {
+			annotations.push({column: args[0].column, row: args[0].row, type: "error", text: `Operand 1 must be a register`})
+			unrecoverable = true
+			break
+		}
+		if (args[1].type != "reg") {
+			annotations.push({column: args[1].column, row: args[1].row, type: "error", text: `Operand 2 must be a register`})
+			unrecoverable = true
+			break
+		}
+		if (args[2].type != "reg") {
+			annotations.push({column: args[2].column, row: args[2].row, type: "error", text: `Operand 3 must be a register`})
+			unrecoverable = true
+			break
+		}
+		let a = args[0].value
+		let b = args[1].value
+		let d = args[2].value
+		instr += `{let v = (${gr(a)} ^ ${gr(b)}); ${sr(d)} v; this.zero = (v & 0xff) == 0; this.carry = 0; }`
 	}
 	break;
 case "RSH":
@@ -943,7 +1069,19 @@ case "RSH":
 		annotations.push({column: opcode.column, row: opcode.row, type: "error", text: `Expected 2 operands for instruction ${opcode.value}`})
 		unrecoverable = true
 	} else {
-		instr += assign(args[1], `${arg(args[0])} >> 1`)
+		if (args[0].type != "reg") {
+			annotations.push({column: args[0].column, row: args[0].row, type: "error", text: `Operand 1 must be a register`})
+			unrecoverable = true
+			break
+		}
+		if (args[1].type != "reg") {
+			annotations.push({column: args[1].column, row: args[1].row, type: "error", text: `Operand 2 must be a register`})
+			unrecoverable = true
+			break
+		}
+		let a = args[0].value
+		let d = args[1].value
+		instr += `{let v = ${gr(a)} >>> 1; ${sr(d)} v; }`
 	}
 	break;
 case "LSH":
@@ -951,7 +1089,19 @@ case "LSH":
 		annotations.push({column: opcode.column, row: opcode.row, type: "error", text: `Expected 2 operands for instruction ${opcode.value}`})
 		unrecoverable = true
 	} else {
-		instr += assign(args[1], `${arg(args[0])} << 1`)
+		if (args[0].type != "reg") {
+			annotations.push({column: args[0].column, row: args[0].row, type: "error", text: `Operand 1 must be a register`})
+			unrecoverable = true
+			break
+		}
+		if (args[1].type != "reg") {
+			annotations.push({column: args[1].column, row: args[1].row, type: "error", text: `Operand 2 must be a register`})
+			unrecoverable = true
+			break
+		}
+		let a = args[0].value
+		let d = args[1].value
+		instr += `{let v = ${gr(a)} << 1; ${sr(d)} v; this.zero = (v & 0xff) == 0; this.carry = v > 0xff; }`
 	}
 	break;
 case "LDI":
@@ -959,7 +1109,19 @@ case "LDI":
 		annotations.push({column: opcode.column, row: opcode.row, type: "error", text: `Expected 2 operands for instruction ${opcode.value}`})
 		unrecoverable = true
 	} else {
-		instr += assign(args[0], arg(args[1]))
+		if (args[0].type != "reg") {
+			annotations.push({column: args[0].column, row: args[0].row, type: "error", text: `Operand 1 must be a register`})
+			unrecoverable = true
+			break
+		}
+		if (args[1].type != "num") {
+			annotations.push({column: args[1].column, row: args[1].row, type: "error", text: `Operand 2 must be an immediate`})
+			unrecoverable = true
+			break
+		}
+		let d = args[0].value
+		let o = args[1].value & 0xff
+		instr += `{${sr(d)} ${o};}`
 	}
 	break;
 case "ADI":
@@ -967,7 +1129,19 @@ case "ADI":
 		annotations.push({column: opcode.column, row: opcode.row, type: "error", text: `Expected 2 operands for instruction ${opcode.value}`})
 		unrecoverable = true
 	} else {
-		instr += assign(args[0], `${arg(args[0])} + ${arg(args[1])}`)
+		if (args[0].type != "reg") {
+			annotations.push({column: args[0].column, row: args[0].row, type: "error", text: `Operand 1 must be a register`})
+			unrecoverable = true
+			break
+		}
+		if (args[1].type != "num") {
+			annotations.push({column: args[1].column, row: args[1].row, type: "error", text: `Operand 2 must be an immediate`})
+			unrecoverable = true
+			break
+		}
+		let d = args[0].value
+		let o = args[1].value & 0xff
+		instr += `{let v = ${sr(d)} (${gr(d)} + ${o}); this.zero = (v & 0xff) == 0; this.carry = v > 0xff; }`
 	}
 	break;
 case "NOP":
@@ -982,9 +1156,39 @@ case "HLT":
 	break;
 case "LOD":
 	if (args.length == 2) {
-		instr += assign(args[1], `this.getMemory(${arg(args[0])})`)
+		if (args[0].type != "reg") {
+			annotations.push({column: args[0].column, row: args[0].row, type: "error", text: `Operand 1 must be a register`})
+			unrecoverable = true
+			break
+		}
+		if (args[1].type != "reg") {
+			annotations.push({column: args[1].column, row: args[1].row, type: "error", text: `Operand 2 must be a register`})
+			unrecoverable = true
+			break
+		}
+		let a = args[0].value
+		let d = args[1].value
+		instr += `${sr(d)} this.getMemory(${gr(a)});`
 	} else if (args.length == 3) {
-		instr += assign(args[1], `this.getMemory(${arg(args[0])} + ${arg(args[2])})`)
+		if (args[0].type != "reg") {
+			annotations.push({column: args[0].column, row: args[0].row, type: "error", text: `Operand 1 must be a register`})
+			unrecoverable = true
+			break
+		}
+		if (args[1].type != "reg") {
+			annotations.push({column: args[1].column, row: args[1].row, type: "error", text: `Operand 2 must be a register`})
+			unrecoverable = true
+			break
+		}
+		if (args[2].type != "num") {
+			annotations.push({column: args[2].column, row: args[2].row, type: "error", text: `Operand 2 must be an immediate`})
+			unrecoverable = true
+			break
+		}
+		let a = args[0].value
+		let d = args[1].value
+		let o = args[2].value
+		instr += `${sr(d)} this.getMemory((${gr(a)} + ${o}) & 0xff);`
 	} else {
 		annotations.push({column: opcode.column, row: opcode.row, type: "error", text: `Expected 2 or 3 operands for instruction ${opcode.value}`})
 		unrecoverable = true
@@ -992,9 +1196,39 @@ case "LOD":
 	break
 case "STR":
 	if (args.length == 2) {
-		instr += `this.setMemory(${arg(args[0])}, ${arg(args[1])})`
+		if (args[0].type != "reg") {
+			annotations.push({column: args[0].column, row: args[0].row, type: "error", text: `Operand 1 must be a register`})
+			unrecoverable = true
+			break
+		}
+		if (args[1].type != "reg") {
+			annotations.push({column: args[1].column, row: args[1].row, type: "error", text: `Operand 2 must be a register`})
+			unrecoverable = true
+			break
+		}
+		let a = args[0].value
+		let d = args[1].value
+		instr += `this.setMemory(${gr(a)}, ${gr(d)});`
 	} else if (args.length == 3) {
-		instr += `this.setMemory(${arg(args[0])} + ${arg(args[2])}, ${arg(args[1])})`
+		if (args[0].type != "reg") {
+			annotations.push({column: args[0].column, row: args[0].row, type: "error", text: `Operand 1 must be a register`})
+			unrecoverable = true
+			break
+		}
+		if (args[1].type != "reg") {
+			annotations.push({column: args[1].column, row: args[1].row, type: "error", text: `Operand 2 must be a register`})
+			unrecoverable = true
+			break
+		}
+		if (args[2].type != "num") {
+			annotations.push({column: args[2].column, row: args[2].row, type: "error", text: `Operand 2 must be an immediate`})
+			unrecoverable = true
+			break
+		}
+		let a = args[0].value
+		let d = args[1].value
+		let o = args[2].value
+		instr += `this.setMemory((${gr(a)} + ${o}) & 0xff, ${gr(d)});`
 	} else {
 		annotations.push({column: opcode.column, row: opcode.row, type: "error", text: `Expected 2 or 3 operands for instruction ${opcode.value}`})
 		unrecoverable = true
@@ -1029,17 +1263,22 @@ case "BRH":
 		annotations.push({column: opcode.column, row: opcode.row, type: "error", text: `Expected 2 operands for instruction ${opcode.value}`})
 		unrecoverable = true
 	} else {
+		if (args[0].type != "wrd" || !['eq', 'ne', 'ge', 'lt', '=', '!=', '>=', '<', 'z', 'nz', 'c', 'nc', 'zero', 'notzero', 'carry', 'notcarry'].includes(args[0].value.toLowerCase())) {
+			annotations.push({column: args[0].column, row: args[0].row, type: "error", text: `Operand 1 must be a comparison`})
+			unrecoverable = true
+			break
+		}
 		switch (args[0].value) {
-		case 0:
+		case "eq": case "=": case "z": case "zero":
 			instr += `if (this.zero) { this.pc = ${arg(args[1])}; break; }`
 			break
-		case 1:
+		case "ne": case "!=": case "nz": case "notzero":
 			instr += `if (!this.zero) { this.pc = ${arg(args[1])}; break; }`
 			break
-		case 2:
+		case "ge": case ">=": case "c": case "carry":
 			instr += `if (this.carry) { this.pc = ${arg(args[1])}; break; }`
 			break
-		case 3:
+		case "lt": case "<": case "nc": case "notcarry":
 			instr += `if (!this.carry) { this.pc = ${arg(args[1])}; break; }`
 			break
 		}
@@ -1050,9 +1289,19 @@ case "CMP":
 		annotations.push({column: opcode.column, row: opcode.row, type: "error", text: `Expected 2 operands for instruction ${opcode.value}`})
 		unrecoverable = true
 	} else {
-		instr += assign(new Token("reg", 0, -1, -1, -1), `${arg(args[0])} - ${arg(args[1])}`)
-		instr += `this.carry = (${arg(args[0])} - ${arg(args[1])} < 0);`
-		instr += `this.zero = (((${arg(args[0])} - ${arg(args[1])}) & 0xff) == 0);`
+		if (args[0].type != "reg") {
+			annotations.push({column: args[0].column, row: args[0].row, type: "error", text: `Operand 1 must be a register`})
+			unrecoverable = true
+			break
+		}
+		if (args[1].type != "reg") {
+			annotations.push({column: args[1].column, row: args[1].row, type: "error", text: `Operand 2 must be a register`})
+			unrecoverable = true
+			break
+		}
+		let a = args[0].value
+		let b = args[1].value
+		instr += `{let v = ${gr(a)} - ${gr(b)}; this.zero = (v & 0xff) == 0; this.carry = v < 0; }`
 	}
 	break;
 case "MOV":
@@ -1060,7 +1309,19 @@ case "MOV":
 		annotations.push({column: opcode.column, row: opcode.row, type: "error", text: `Expected 2 operands for instruction ${opcode.value}`})
 		unrecoverable = true
 	} else {
-		instr += assign(args[1], arg(args[0]))
+		if (args[0].type != "reg") {
+			annotations.push({column: args[0].column, row: args[0].row, type: "error", text: `Operand 1 must be a register`})
+			unrecoverable = true
+			break
+		}
+		if (args[1].type != "reg") {
+			annotations.push({column: args[1].column, row: args[1].row, type: "error", text: `Operand 2 must be a register`})
+			unrecoverable = true
+			break
+		}
+		let a = args[0].value
+		let d = args[1].value
+		instr += `{this.zero = (${sr(a)} ${gr(d)}) == 0; this.carry = 0; }`
 	}
 	break;
 default:
