@@ -115,10 +115,10 @@ class BatPUMachine {
     	if (addr >= 240) {
     		switch (addr) {
     		case 244:
-    			return ScreenDevice.getPixel(this.x, this.y) != 0
+    			return (ScreenDevice.getPixel(this.x, this.y) != 0) | 0
     			break
     		case 254:
-    			return Math.random() * 255
+    			return (Math.random() * 256) | 0
     			break
     		case 255:
     			return KeyboardDevice.getPad()
@@ -530,6 +530,8 @@ const BatPU = function(){
 						char = raw[i]
 					}
 					line.push(new Token("lbl", str.toLowerCase(), scolumn, srow, si))
+					lines.push(line)
+					line = []
 					continue
 				}
 				if (c == "/") {
@@ -578,6 +580,18 @@ const BatPU = function(){
 					}
 					continue
 				}
+				if (c == ";") {
+					let start = i
+					i += 1
+					column += 1
+					let char = raw[i]
+					while (i < L && char != "\n") {
+						column += 1
+						i += 1
+						char = raw[i]
+					}
+					continue
+				}
 				
 				let str = ""
 				let char = raw[i]
@@ -593,7 +607,7 @@ const BatPU = function(){
 					column += 1
 					char = raw[i]
 				}
-				line.push(new Token("wrd", str, scolumn, srow, si))
+				line.push(new Token("wrd", str.toLowerCase(), scolumn, srow, si))
 				continue
 
 			}
@@ -856,9 +870,10 @@ const BatPU = function(){
 	        const burst_length = 500;
 
 	        let step = "let i = 1; switch(this.pc) {\n";
-	        let run = `let i = 0;
-	const end = performance.now() + ${max_duration};
-	while (performance.now() < end) for (let j = 0; j < ${burst_length}; j++) switch(this.pc) {\n`;
+	//         let run = `let i = 0;
+	// const end = performance.now() + ${max_duration};
+	// while (performance.now() < end) for (let j = 0; j < ${burst_length}; j++) switch(this.pc) {\n`;
+	        let run = `let i = 0; for (let j = 0; j < ${burst_length}; j++) switch(this.pc) {\n`;
 	        for (let i = 0; i < instructions.length; i++) {
 	            const opcode = instructions[i][0]
 	            const args = instructions[i][1]
@@ -1009,7 +1024,7 @@ case "NEG":
 		}
 		let a = args[0].value
 		let d = args[1].value
-		instr += `{let v = -${gr(a)}; ${sr(b)} v; this.zero = (v & 0xff) == 0; this.carry = v < 0; }`
+		instr += `{let v = -${gr(a)}; ${sr(d)} v; this.zero = (v & 0xff) == 0; this.carry = v < 0; }`
 	}
 	break;
 case "AND":
@@ -1268,7 +1283,7 @@ case "BRH":
 			unrecoverable = true
 			break
 		}
-		switch (args[0].value) {
+		switch (args[0].value.toLowerCase()) {
 		case "eq": case "=": case "z": case "zero":
 			instr += `if (this.zero) { this.pc = ${arg(args[1])}; break; }`
 			break
@@ -1321,7 +1336,7 @@ case "MOV":
 		}
 		let a = args[0].value
 		let d = args[1].value
-		instr += `{this.zero = (${sr(a)} ${gr(d)}) == 0; this.carry = 0; }`
+		instr += `{this.zero = (${sr(d)} ${gr(a)}) == 0; this.carry = 0; }`
 	}
 	break;
 default:
