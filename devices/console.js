@@ -87,7 +87,7 @@ window.Devices["ConsoleDevice"] = window["ConsoleDevice"] = function() {
 				}
 
 				// textBuffer[y * width + width - 1] = textBuffer[y * width + width - 1].replace(/\n+$/, "") + "\n"
-				textBuffer[y * width + width - 1] = textBuffer[y * width + width - 1][0] ?? "" + "\n"
+				textBuffer[y * width + width - 1] = (textBuffer[y * width + width - 1][0] ?? "").replace(/\n+$/, "") + "\n"
 				x = 0
 				y += 1
 				// if (!textBuffer[y * width + width - 1].includes("\n")) {
@@ -196,21 +196,21 @@ window.Devices["ConsoleDevice"] = window["ConsoleDevice"] = function() {
 		},
 
 		outCodePoint(cp) {
-			if ((cp & 0b11111111111111111111111110000000) == 0b10000000) {
-				switch (cp) {
-				case 37 | 0b10000000:
+			if (cp < 0 || cp > 0x20000) {
+				switch (cp >> 0) {
+				case -37:
 					self.moveCursor(-1, 0, true)
 					needsSwap = true
 					break;
-				case 38 | 0b10000000:
+				case -38:
 					self.moveCursor(0, -1, true)
 					needsSwap = true
 					break;
-				case 39 | 0b10000000:
+				case -39:
 					self.moveCursor(1, 0, true)
 					needsSwap = true
 					break;
-				case 40 | 0b10000000:
+				case -40:
 					self.moveCursor(0, 1, true)
 					needsSwap = true
 					break;
@@ -582,6 +582,50 @@ window.Devices["ConsoleDevice"] = window["ConsoleDevice"] = function() {
 			let spans = []
 			let cstyle = ""
 			let spanstr = ""
+
+			// for (let y = 0; y < height; y++) {
+			// 	spanstr = ""
+			// 	for(let x = 0; x < width; x++) {
+			// 		let i = y * width + x
+			// 		while ((i < width * height) && (x < width) && self.sameStyle(styleBuffer[i], cstyle)) {// && (fgBuffer[i] == ccolor) && (bgBuffer[i] == cbgcolor)) {
+			// 			// console.log(textBuffer[i], textBuffer[i] ?? "�")
+			// 			spanstr += textBuffer[i] ?? "�"
+			// 			i += 1
+			// 			x += 1
+			// 			if ((textBuffer[i] ?? "�") == "\n") {
+			// 				break
+			// 			}
+			// 			// console.log(i, x, width)
+			// 		}
+			// 		//s += `<span style="color: ${getColor(ccolor)}" class="${cstyle.split('').join(' ')}">${spanstr}</span>`
+			// 		const span = document.createElement("span")
+			// 		span.className = `${cstyle.split('').join(' ')}`
+			// 		//span.style.color = getColor(ccolor)
+			// 		//span.style.backgroundColor = getColor(cbgcolor)
+			// 		// span.style.setProperty("--c", getColor(cstyle.includes("I") ? cbgcolor : ccolor))
+
+
+
+			// 		//span.style.setProperty("--b", getColor(cbgcolor))
+			// 		span.style.whiteSpace = "pre"
+			// 		span.innerText = spanstr.replace(/\n*$/, "")
+			// 		//console.log(spanstr)
+			// 		spans.push(span)
+
+			// 		cstyle = styleBuffer[i] || ""
+			// 		// ccolor = fgBuffer[i]
+			// 		// cbgcolor = bgBuffer[i]
+			// 		// spanstr = ""
+
+			// 		// i--
+			// 		// x -= 1
+			// 	}
+			// 	console.log(spanstr)
+			// 	if (!spanstr.endsWith("\n")) {
+			// 		spans.push(document.createElement("br"))
+			// 	}
+			// }
+
 			for(let i = 0; i < width * height; i ++) {
 				while ((i < width * height) && self.sameStyle(styleBuffer[i], cstyle)) {
 					spanstr += textBuffer[i] ?? "�"

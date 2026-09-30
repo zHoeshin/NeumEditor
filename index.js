@@ -218,7 +218,7 @@ window["registerExtension"] = function (ext, editor) {
 	editorClasses[ext] = editor
 }
 
-function getEditorClass(name) {
+window["getEditorClass"] = function (name) {
 	const e = name.split(".")
 	for (let i = name[0] == "."; i < e.length; i++) {
 		const ext = e.slice(i).join(" ")
@@ -228,6 +228,8 @@ function getEditorClass(name) {
 	}
 	return null
 }
+
+window["getEditorClasses"] = function() {return editorClasses}
 
 
 const editorTabContents = document.querySelector("div#editors")
@@ -386,7 +388,7 @@ window["RuntimeManager"] = function() {
 			}
 
 			const [result, c, callback] = runtime.burst(15, input)
-			runtime.markCurrentLine(runtime.getLine())
+			runtime?.markCurrentLine(runtime.getLine())
 			input = undefined
 			const e = performance.now()
 
@@ -417,7 +419,8 @@ window["RuntimeManager"] = function() {
 	       		console.log(runtime)
 	       		runnable = false
 	       		running = false
-				runtime.markCurrentLine(runtime.getLine())
+				runtime?.markCurrentLine(runtime.getLine())
+				runtime = null
 				state = StateNone
 				cancelAnimationFrame(animationframe)
 				animationframe = -1
@@ -436,7 +439,8 @@ window["RuntimeManager"] = function() {
        		console.log(runtime)
        		runnable = false
        		running = false
-			runtime.markCurrentLine(runtime.getLine())
+			runtime?.markCurrentLine(runtime.getLine())
+			runtime = null
 			state = StateNone
 			cancelAnimationFrame(animationframe)
 			animationframe = -1
@@ -453,7 +457,7 @@ window["RuntimeManager"] = function() {
 			const [result, c, f] = runtime.step(input)
 			input = undefined
 			console.log(runtime.getLine(), runtime)
-			runtime.markCurrentLine(runtime.getLine())
+			runtime?.markCurrentLine(runtime.getLine())
 
 	        ScreenDevice.flush()
 	        ConsoleDevice.flush()
@@ -466,7 +470,8 @@ window["RuntimeManager"] = function() {
 	       		console.log(runtime)
 	       		runnable = false
 	       		running = false
-				runtime.markCurrentLine(runtime.getLine())
+				runtime?.markCurrentLine(runtime.getLine())
+				runtime = null
 				state = StateNone
 				cancelAnimationFrame(animationframe)
 				animationframe = -1
@@ -480,7 +485,7 @@ window["RuntimeManager"] = function() {
 		},
 
 		pause() {
-			runtime.markCurrentLine(runtime.getLine())
+			runtime?.markCurrentLine(runtime.getLine())
 			cancelAnimationFrame(animationframe)
 			animationframe = -1
 			running = false

@@ -118,10 +118,10 @@ window["KeyboardDevice"] = window.Devices["KeyboardDevice"] = function(){
     	"Escape": 0x1b,
     	"Tab": 0x09,
     	"Backspace": "\b".codePointAt(0),
-    	"ArrowUp": 38 | 0b10000000,
-    	"ArrowDown": 40 | 0b10000000,
-    	"ArrowLeft": 37 | 0b10000000,
-    	"ArrowRight": 39 | 0b10000000,
+    	"ArrowUp": -38,
+    	"ArrowDown": -40,
+    	"ArrowLeft": -37,
+    	"ArrowRight": -39,
     }
 
     const self = {
