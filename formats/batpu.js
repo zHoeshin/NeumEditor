@@ -932,7 +932,7 @@ case "DEC":
 			break
 		}
 		let a = args[0].value
-		instr += `{let v = ${gr(a)} - 1; ${sr(a)} v; this.zero = (v & 0xff) == 0; this.carry = v < 0; }`
+		instr += `{let v = ${gr(a)} - 1; ${sr(a)} v; this.zero = (v & 0xff) == 0; this.carry = v >= 0; }`
 	}
 	break;
 case "SUB":
@@ -958,7 +958,7 @@ case "SUB":
 		let a = args[0].value
 		let b = args[1].value
 		let d = args[2].value
-		instr += `{let v = ${gr(a)} - ${gr(b)}; ${sr(d)} v; this.zero = (v & 0xff) == 0; this.carry = v < 0; }`
+		instr += `{let v = ${gr(a)} - ${gr(b)}; ${sr(d)} v; this.zero = (v & 0xff) == 0; this.carry = v >= 0; }`
 	}
 	break;
 case "NOR":
@@ -1004,7 +1004,7 @@ case "NOT":
 		}
 		let a = args[0].value
 		let d = args[1].value
-		instr += `{this.zero = (${sr(d)} ~${gr(a)}) == 0; this.carry = 0; }`
+		instr += `{this.zero = (${sr(d)} ((~${gr(a)}) & 0xff)) == 0; this.carry = 0; }`
 	}
 	break;
 case "NEG":
@@ -1024,7 +1024,7 @@ case "NEG":
 		}
 		let a = args[0].value
 		let d = args[1].value
-		instr += `{let v = -${gr(a)}; ${sr(d)} v; this.zero = (v & 0xff) == 0; this.carry = v < 0; }`
+		instr += `{let v = -${gr(a)}; ${sr(d)} v; this.zero = (v & 0xff) == 0; this.carry = v >= 0; }`
 	}
 	break;
 case "AND":
@@ -1283,18 +1283,27 @@ case "BRH":
 			unrecoverable = true
 			break
 		}
+		if (args[1].type == "lbl") {
+			args[1].type = "num"
+			args[1].value = labels[args[1].value]
+		}
+		if (args[1].type != "num") {
+			annotations.push({column: args[1].column, row: args[1].row, type: "error", text: `Operand 2 must be an immediate`})
+			unrecoverable = true
+		}
+		let t = args[1].value & 0b1111111111
 		switch (args[0].value.toLowerCase()) {
 		case "eq": case "=": case "z": case "zero":
-			instr += `if (this.zero) { this.pc = ${arg(args[1])}; break; }`
+			instr += `if (this.zero) { this.pc = ${t}; break; }`
 			break
 		case "ne": case "!=": case "nz": case "notzero":
-			instr += `if (!this.zero) { this.pc = ${arg(args[1])}; break; }`
+			instr += `if (!this.zero) { this.pc = ${t}; break; }`
 			break
 		case "ge": case ">=": case "c": case "carry":
-			instr += `if (this.carry) { this.pc = ${arg(args[1])}; break; }`
+			instr += `if (this.carry) { this.pc = ${t}; break; }`
 			break
 		case "lt": case "<": case "nc": case "notcarry":
-			instr += `if (!this.carry) { this.pc = ${arg(args[1])}; break; }`
+			instr += `if (!this.carry) { this.pc = ${t}; break; }`
 			break
 		}
 	}
@@ -1316,7 +1325,7 @@ case "CMP":
 		}
 		let a = args[0].value
 		let b = args[1].value
-		instr += `{let v = ${gr(a)} - ${gr(b)}; this.zero = (v & 0xff) == 0; this.carry = v < 0; }`
+		instr += `{let v = ${gr(a)} - ${gr(b)}; this.zero = (v & 0xff) == 0; this.carry = v >= 0; }`
 	}
 	break;
 case "MOV":
