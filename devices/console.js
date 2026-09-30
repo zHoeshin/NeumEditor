@@ -553,14 +553,15 @@ window.Devices["ConsoleDevice"] = window["ConsoleDevice"] = function() {
 			for(const char of args.join(kvargs["sep"] ?? " ") + (kvargs["end"] ?? "\n")) {
 				self.outChar(char)
 			}
-			self.flush()
+			if (kvargs["flush"] ?? true) {
+				self.flush()
+			}
 		},
 
 		printRaw(...args) {
 			for(const char of args.join("")) {
 				self.outChar(char)
 			}
-			self.flush()
 		},
 
 		getCursorPosition() {
