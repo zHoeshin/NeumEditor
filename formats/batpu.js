@@ -747,6 +747,7 @@ const BatPU = function(){
 				continue
 			}
 
+			let speed = 120;
 
 			j = 0
 			while (j < lines.length) {
@@ -768,6 +769,25 @@ const BatPU = function(){
 				}
 				if (line[0].type == "wrd") {
 					if (line[0].value.toUpperCase() == "DEFINE") {
+						j += 1
+						continue
+					}
+					if (line[0].value.toUpperCase() == "SPEED") {
+                        if (line.length != 2) {
+							annotations.push({column: line[0].column, row: line[0].row, type: "error", text: "Expected exactly 1 argument in speed declaration"})
+							j += 1
+							continue
+						}
+						let a = line[1]
+						if (a.key in userdefinitions) {
+							a = userdefinitions[a.key]
+						}
+						if (a.type != "num") {
+							annotations.push({column: a.column, row: a.row, type: "error", text: "Expected a number in speed declaration"})
+							j += 1
+							continue
+						}
+						speed = a.value
 						j += 1
 						continue
 					}
