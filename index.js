@@ -352,7 +352,8 @@ window["RuntimeManager"] = function() {
 				console.warn("Failed to compile")
 				return false
 			}
-			ScreenDevice?.clear()
+			ScreenDevice.clearBuffer()
+			ScreenDevice.clear()
 			path = editorCurrent
 			fresh = true
 			runnable = true

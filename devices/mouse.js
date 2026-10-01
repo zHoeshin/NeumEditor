@@ -80,7 +80,7 @@ window["MouseDevice"] = window.Devices["MouseDevice"] = function() {
 		},
 
 		getButtons() {
-			return buttons - 1
+			return buttons
 		},
 	}
 

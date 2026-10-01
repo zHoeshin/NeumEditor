@@ -361,7 +361,7 @@ const URCL = function(){
 	                },
 	                {
 	                	token: "constant.language",
-	                	regex: "\\bSP|PC|sp|pc(.(\d+)|[WwBbAa])?\\b"
+	                	regex: "\\b(SP|PC|sp|pc(.(\d+)|[WwBbAa])?)\\b"
 	                },
 	                {
 	                    token: "variable.parameter",
@@ -385,7 +385,7 @@ const URCL = function(){
 	                },
 	                {
 	                    token: "variable.language",
-	                    regex: "@[A-Za-z]+\\b(.(\d+)|[WwBbAa])?"
+	                    regex: "@[A-Za-z_-]+\\b(.(\d+)|[WwBbAa])?"
 	                },
 	                {
 	                	token: "keyword.control",
@@ -394,7 +394,7 @@ const URCL = function(){
 	                },
 	                {
 	                    token: "support.function",
-	                    regex: "\\b[a-zA-Z_][a-zA-Z0-9_]*(.(\d+)|[WwBbAa])?\\b"
+	                    regex: "\\b([a-zA-Z_][a-zA-Z0-9_]*(.(\d+)|[WwBbAa])?)\\b"
 	                },
 	                {
 	                    token: "text",
@@ -1020,6 +1020,8 @@ const URCL = function(){
 
 			let BITS = 8
 
+			const META = []
+
 			while (j < lines.length) {
 				line = lines[j]
 				if (line.length == 0) {
@@ -1045,6 +1047,51 @@ const URCL = function(){
 						case "ASSERT_NEQ":
 							null
 							break
+						case "SCREEN_WIDTH": {
+							if (line.length == 1) {
+								annotations.push({column: line[0].column + 1, row: line[0].row + 1, type: "error", text: `Expected screen width`})
+								break
+							}
+							if (line.length != 2) {
+								annotations.push({column: line[0].column + 1, row: line[0].row + 1, type: "error", text: `Expected just screen width, ignoring extra parameters`})
+							}
+							let p = line[1]
+							if (p.type != "num") {
+								annotations.push({column: line[1].column + 1, row: line[1].row + 1, type: "error", text: `Expected screen width to be an integer`})
+								break
+							}
+							META["SCREEN_WIDTH"] = p.value
+							break }
+						case "SCREEN_HEIGHT": {
+							if (line.length == 1) {
+								annotations.push({column: line[0].column + 1, row: line[0].row + 1, type: "error", text: `Expected screen height`})
+								break
+							}
+							if (line.length != 2) {
+								annotations.push({column: line[0].column + 1, row: line[0].row + 1, type: "error", text: `Expected just screen height, ignoring extra parameters`})
+							}
+							let p = line[1]
+							if (p.type != "num") {
+								annotations.push({column: line[1].column + 1, row: line[1].row + 1, type: "error", text: `Expected screen height to be an integer`})
+								break
+							}
+							META["SCREEN_HEIGHT"] = p.value
+							break }
+						case "SCREEN_COLOR": {
+							if (line.length == 1) {
+								annotations.push({column: line[0].column + 1, row: line[0].row + 1, type: "error", text: `Expected screen color space`})
+								break
+							}
+							if (line.length != 2) {
+								annotations.push({column: line[0].column + 1, row: line[0].row + 1, type: "error", text: `Expected just screen color space, ignoring extra parameters`})
+							}
+							let p = line[1]
+							if (p.type != "str") {
+								annotations.push({column: line[1].column + 1, row: line[1].row + 1, type: "error", text: `Expected screen color space to be a string`})
+								break
+							}
+							META["SCREEN_COLOR"] = p.value
+							break }
 					}
 					j += 1
 					continue
@@ -2051,6 +2098,20 @@ default:
 	        const INSTRUCTIONLINES = {}
 	        for (let i = 0; i < instructions.length; i++) {
 	        	INSTRUCTIONLINES[i] = instructions[i][0].row
+	        }
+
+
+	        if ("SCREEN_WIDTH" in META) {
+	        	document.querySelector("input#screenwidth").value = META["SCREEN_WIDTH"]
+	        	document.querySelector("input#screenwidth").dispatchEvent(new Event('change', { bubbles: true }))
+	        }
+	        if ("SCREEN_HEIGHT" in META) {
+	        	document.querySelector("input#screenheight").value = META["SCREEN_HEIGHT"]
+	        	document.querySelector("input#screenheight").dispatchEvent(new Event('change', { bubbles: true }))
+	        }
+	        if ("SCREEN_COLOR" in META) {
+	        	document.querySelector("select#screencolormode").value = META["SCREEN_COLOR"]
+	        	document.querySelector("select#screencolormode").dispatchEvent(new Event('change', { bubbles: true }))
 	        }
 
 

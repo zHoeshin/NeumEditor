@@ -15,7 +15,7 @@ window.Devices["ScreenDevice"] = window["ScreenDevice"] = function () {
 
 	let writeCount = 0
 
-	let clearColor = 0 //0x000000ff
+	let clearColor = 0xff000000
 
 	const colorSpaces = {
 		"RGBA8888": function (color) {
@@ -78,6 +78,12 @@ window.Devices["ScreenDevice"] = window["ScreenDevice"] = function () {
 			return [255, 0, 0, 255]
 		},
 	}
+	const clearColors = {
+		"RGBA8888": 0xff000000,
+		"RGB565": 0,
+		"Monochrome": 0,
+		"Pico8": 0,
+	}
 
 	let currentColorSpace = colorSpaces.Monochrome
 
@@ -95,8 +101,7 @@ window.Devices["ScreenDevice"] = window["ScreenDevice"] = function () {
 				self.prepare()
 			}
 			document.querySelector("select#screencolormode").onchange = (e) => {
-				currentColorSpace = colorSpaces[document.querySelector("select#screencolormode").value]
-				self.updateColorProcessor()
+				self.updateColorProcessor(document.querySelector("select#screencolormode").value)
 			}
 
 			width = canvas.width
@@ -108,7 +113,9 @@ window.Devices["ScreenDevice"] = window["ScreenDevice"] = function () {
 		},
 
 
-		updateColorProcessor() {
+		updateColorProcessor(space) {
+			currentColorSpace = colorSpaces[space] ?? colorSpaces["RGB565"]
+			clearColor = clearColors[space] ?? 0
 			for (let y = 0; y < canvas.height; y++) {
 				for(let x = 0; x < canvas.width; x++) {
 					const index = (y * canvas.width + x) * 4
@@ -200,25 +207,25 @@ window.Devices["ScreenDevice"] = window["ScreenDevice"] = function () {
 			for (let i = 0; i < iter2.length; i++) {
 				iter2[i] = c2
 			}
-			buffer.data.set(imagedata.data.slice())
-			rawbuffer.data.set(rawimagedata.data.slice())
+			// buffer.data.set(imagedata.data.slice())
+			// rawbuffer.data.set(rawimagedata.data.slice())
 		},
 
 		clear() {
 			ctx?.fillRect(0, 0, width, height)
 			var c = (clearColor & 0xff) << 24 | (clearColor & 0xff00) << 8 | (clearColor & 0xff0000) >>> 8 | clearColor >>> 24
-			var iter = new Uint32Array(rawimagedata.data.buffer)
+			var iter = new Uint32Array(rawbuffer.data.buffer)
 			for (let i = 0; i < iter.length; i++) {
 				iter[i] = c
 			}
 			var convc = currentColorSpace(clearColor)
 			var c2 = (convc[3]) << 24 | (convc[2] << 16) | (convc[1] << 8) | convc[0]
-			var iter2 = new Uint32Array(imagedata.data.buffer)
+			var iter2 = new Uint32Array(buffer.data.buffer)
 			for (let i = 0; i < iter2.length; i++) {
 				iter2[i] = c2
 			}
-			buffer.data.set(imagedata.data.slice())
-			rawbuffer.data.set(rawimagedata.data.slice())
+			// buffer.data.set(imagedata.data.slice())
+			// rawbuffer.data.set(rawimagedata.data.slice())
 			ctx.putImageData(buffer, 0, 0)
 
 			// imagedata = ctx.getImageData(0, 0, canvas.width, canvas.height)
