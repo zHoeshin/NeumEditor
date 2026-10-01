@@ -66,10 +66,10 @@ class BatPUMachine {
     			this.y = value
     			break
     		case 242:
-    			ScreenDevice.setPixel(this.x, this.y, 0xffffffff)
+    			ScreenDevice.setPixel(this.x & 0b11111, this.y & 0b11111, 0xffffffff)
     			break
     		case 243:
-    			ScreenDevice.setPixel(this.x, this.y, 0xff000000)
+    			ScreenDevice.setPixel(this.x & 0b11111, this.y & 0b11111, 0xff000000)
     			break
     		case 245:
     			ScreenDevice.swap()
@@ -82,7 +82,7 @@ class BatPUMachine {
     			break
     		case 248:
     			this.outCharacters = this.characters
-    			ConsoleDevice.printRaw(`\x1b[2J${this.outCharacters}${this.numberOn ? this.numberSigned ? (this.number - 128) : this.number : ""}`)
+    			ConsoleDevice.printRaw(`\x1b[2J${this.outCharacters}${this.numberOn ? this.numberSigned ? (this.number >= 128 ? this.number - 256 : this.number) : this.number : ""}`)
     			break
     		case 249:
     			this.characters = ""
@@ -90,11 +90,11 @@ class BatPUMachine {
     		case 250:
     			this.number = value
     			this.numberOn = true
-    			ConsoleDevice.printRaw(`\x1b[2J${this.outCharacters}${this.numberOn ? this.numberSigned ? (this.number - 128) : this.number : ""}`)
+    			ConsoleDevice.printRaw(`\x1b[2J${this.outCharacters}${this.numberOn ? this.numberSigned ? (this.number >= 128 ? this.number - 256 : this.number) : this.number : ""}`)
     			break
     		case 251:
     			this.numberOn = false
-    			ConsoleDevice.printRaw(`\x1b[2J${this.outCharacters}${this.numberOn ? this.numberSigned ? (this.number - 128) : this.number : ""}`)
+    			ConsoleDevice.printRaw(`\x1b[2J${this.outCharacters}${this.numberOn ? this.numberSigned ? (this.number >= 128 ? this.number - 256 : this.number) : this.number : ""}`)
     			break
     		case 252:
     			this.numberSigned = true
@@ -103,7 +103,7 @@ class BatPUMachine {
     			this.numberSigned = false
     			break
     		}
-    		return
+    		return 0
     	}
         // if (addr >= this.memorysize){
         //     console.error(`Heap overflow on store: ${addr} >= ${this.memorysize}`);
@@ -114,10 +114,12 @@ class BatPUMachine {
         return 0
     }
     getMemory(addr){
+        addr &= 0xff
+		
     	if (addr >= 240) {
     		switch (addr) {
     		case 244:
-    			return (ScreenDevice.getPixel(this.x, this.y) == 0xffffffff) | 0
+    			return (ScreenDevice.getPixel(this.x & 0b11111, this.y & 0b11111) == 0xffffffff) | 0
     			break
     		case 254:
     			return (Math.random() * 256) | 0
@@ -133,7 +135,7 @@ class BatPUMachine {
         //     return 0
         // }
         // console.warn(this.memory[addr], "at", addr)
-        return this.memory[addr & 0xff];
+        return this.memory[addr];
     }
 
     pushStack(value) {
@@ -1286,8 +1288,14 @@ case "BRH":
 			break
 		}
 		if (args[1].type == "lbl") {
+			let name = args[1].value
 			args[1].type = "num"
 			args[1].value = labels[args[1].value]
+			if (args[1].value === undefined) {
+                annotations.push({column: args[1].column, row: args[1].row, type: "error", text: `Unknown label ${name}`})
+				unrecoverable = true
+				break
+			}
 		}
 		if (args[1].type != "num") {
 			annotations.push({column: args[1].column, row: args[1].row, type: "error", text: `Operand 2 must be an immediate`})
