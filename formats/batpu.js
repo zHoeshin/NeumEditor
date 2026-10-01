@@ -897,7 +897,7 @@ const BatPU = function(){
 	//         let run = `let i = 0;
 	// const end = performance.now() + ${max_duration};
 	// while (performance.now() < end) for (let j = 0; j < ${burst_length}; j++) switch(this.pc) {\n`;
-	        let run = `let i = 0; for (let j = 0; j < ${burst_length}; j++) switch(this.pc) {\n`;
+	        let run = `let i = 0; for (let j = 0; j < ${speed / 60}; j++) switch(this.pc) {\n`;
 	        for (let i = 0; i < instructions.length; i++) {
 	            const opcode = instructions[i][0]
 	            const args = instructions[i][1]
