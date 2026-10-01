@@ -2,6 +2,8 @@ class BatPUMachine {
 	constructor(max_duration, callback_return_value, step, run, INSTRUCTIONLINES, editor, ) {
 		this.pc = 0
 		this.sp = 0
+		this.zero = false
+		this.carry = false
 		this.registers = new Uint8Array(16).fill(0)
 		this.memory = new Uint8Array(256)
 		this.step =  Function(callback_return_value, step)
@@ -115,7 +117,7 @@ class BatPUMachine {
     	if (addr >= 240) {
     		switch (addr) {
     		case 244:
-    			return (ScreenDevice.getPixel(this.x, this.y) != 0) | 0
+    			return (ScreenDevice.getPixel(this.x, this.y) == 0xffffffff) | 0
     			break
     		case 254:
     			return (Math.random() * 256) | 0
@@ -124,7 +126,7 @@ class BatPUMachine {
     			return KeyboardDevice.getPad()
     			break
     		}
-    		return
+    		return 0
     	}
         // if (addr >= this.memorysize){
         //     console.error(`Heap overflow on load: ${addr} >= ${this.memorysize}`);
@@ -441,7 +443,7 @@ const BatPU = function(){
 				if ("+-0123456789_".includes(c)) {
 					let numstr = ""
 					let char = raw[i]
-					while (i < L && "+-0123456789abcdefABCDEF_bx".includes(char)) {
+					while (i < L && "+-0123456789abcdefABCDEF_bxoO".includes(char)) {
 						numstr += char
 						i += 1
 						column += 1
