@@ -238,6 +238,11 @@ const editorFiles = {}
 let editorCurrent = ""
 const editorUnsaved = new Set()
 
+
+window["getEditors"] = function() {
+	return editorFiles
+}
+
 function switchTo(path) {
 	editorFiles[editorCurrent]?.view.classList.add("hidden")
 	editorFiles[editorCurrent]?.tab.classList.add("hidden")
@@ -376,6 +381,11 @@ window["RuntimeManager"] = function() {
 			starttime = performance.now()
 
 			animationframe = requestAnimationFrame(self.frame)
+
+			document.querySelector("button#play").style.background = "gray"
+			document.querySelector("button#pause").style.background = "white"
+			document.querySelector("button#stop").style.background = "white"
+			document.querySelector("button#step").style.background = "white"
 		},
 
 		frame() {
@@ -425,6 +435,11 @@ window["RuntimeManager"] = function() {
 				state = StateNone
 				cancelAnimationFrame(animationframe)
 				animationframe = -1
+
+			document.querySelector("button#play").style.background = "white"
+			document.querySelector("button#pause").style.background = "gray"
+			document.querySelector("button#stop").style.background = "gray"
+			document.querySelector("button#step").style.background = "white"
 				break
 			case StateInput:
 				state = StateInput
@@ -446,15 +461,32 @@ window["RuntimeManager"] = function() {
 			cancelAnimationFrame(animationframe)
 			animationframe = -1
 			state = StateNone
+
+			document.querySelector("button#play").style.background = "white"
+			document.querySelector("button#pause").style.background = "gray"
+			document.querySelector("button#stop").style.background = "gray"
+			document.querySelector("button#step").style.background = "white"
 		},
 
 		step() {
+			if (path == null || path != editorCurrent || runtime == null) {
+				if (!self.compile()) {
+					console.error("Could not compile")
+					return
+				}
+			}
 			if (!runnable || running) {
 				return 1
 			}
 			if (state == StateInput) {
 				return 2
 			}
+
+			document.querySelector("button#play").style.background = "white"
+			document.querySelector("button#pause").style.background = "gray"
+			document.querySelector("button#stop").style.background = "white"
+			document.querySelector("button#step").style.background = "white"
+
 			const [result, c, f] = runtime.step(input)
 			input = undefined
 			console.log(runtime.getLine(), runtime)
@@ -476,6 +508,11 @@ window["RuntimeManager"] = function() {
 				state = StateNone
 				cancelAnimationFrame(animationframe)
 				animationframe = -1
+
+			document.querySelector("button#play").style.background = "white"
+			document.querySelector("button#pause").style.background = "gray"
+			document.querySelector("button#stop").style.background = "gray"
+			document.querySelector("button#step").style.background = "white"
 				break
 			case StateInput:
 				state = StateInput
@@ -490,6 +527,11 @@ window["RuntimeManager"] = function() {
 			cancelAnimationFrame(animationframe)
 			animationframe = -1
 			running = false
+
+			document.querySelector("button#play").style.background = "white"
+			document.querySelector("button#pause").style.background = "gray"
+			document.querySelector("button#stop").style.background = "white"
+			document.querySelector("button#step").style.background = "white"
 		},
 
 		sendInput(value) {

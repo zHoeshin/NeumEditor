@@ -25,30 +25,8 @@ class BatPUMachine {
 	}
 
 	markCurrentLine(line) {
-		this.editor.getSession().removeGutterDecoration(this.markedline, "current-executed-line-marker")
-
-		const dec = this.editor.getSession()._gutterDecorations;
-
-		const session = this.editor.getSession()
-
-		if (!dec) {
-			session.addGutterDecoration(line, "current-executed-line-marker")
-			this.markedline = line
-			return
-		}
-
-		for (let row of Object.keys(dec)) {
-			const classNames = dec[row];
-			if (!classNames) {
-				continue
-			}
-
-			for (let className of Object.keys(classNames)) {
-				session.removeGutterDecoration(Number(row), className);
-			}
-		}
-
-		session.addGutterDecoration(line, "current-executed-line-marker")
+		this.editor.getSession().$decorations = []
+		this.editor.getSession().addGutterDecoration(line, "current-executed-line-marker")
 		this.markedline = line
 	}
 

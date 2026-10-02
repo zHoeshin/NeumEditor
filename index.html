@@ -23,10 +23,10 @@
         </div>
         <div id="workingarea">
             <div id="controls">
-                <button class="control square" click="RuntimeManager.run()"><img src="icons/play.svg"></button>
-                <button class="control square"><img src="icons/stop.svg"></button>
-                <button class="control square"><img src="icons/pause.svg"></button>
-                <button class="control square"><img src="icons/step.svg"></button>
+                <button id="play" class="control square" onclick="RuntimeManager.run()" style="background: white;"><img src="icons/play.svg"></button>
+                <button id="pause" class="control square" onclick="RuntimeManager.pause()" style="background: gray;"><img src="icons/pause.svg"></button>
+                <button id="stop" class="control square" onclick="RuntimeManager.break()" style="background: gray;"><img src="icons/stop.svg"></button>
+                <button id="step" class="control square" onclick="RuntimeManager.pause(); RuntimeManager.step()" style="background: white;"><img src="icons/step.svg"></button>
                 <div id="viewcontrols">
                     <button id="screen" class="control long disabled">screen</button>
                     <button id="code" class="control long disabled">code</button>

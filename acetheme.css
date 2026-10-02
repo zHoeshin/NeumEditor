@@ -35,10 +35,10 @@ pre.ace_editor {
 
 .ace_gutter-cell.current-executed-line-marker {
     color: white !important;
+    left: -1ch;
 }
 
 .ace_gutter-cell.current-executed-line-marker::before {
     content: "→" !important;
     color: white !important;
-
 }
