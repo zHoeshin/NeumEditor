@@ -32,6 +32,7 @@
                     <button id="code" class="control long disabled">code</button>
                     <button id="console" class="control long">console</button>
                 </div>
+                <button onclick="document.querySelector('div.overlay#help').style.display = ''" class="control square">?</button>
                 <button class="control square"><img src="icons/gear.svg"></button>
             </div>
 
@@ -76,7 +77,7 @@
         </div>
     </div>
 
-    <div id="help" class="overlay">
+    <div id="help" class="overlay" style="display: none;">
         <div id="helpwrapper" class="overlaywrapper">
             <div class="overlayheader">
                 <h1 class="overlayname">Help</h1>
