@@ -238,3 +238,5 @@ window.Devices["ScreenDevice"] = window["ScreenDevice"] = function () {
 
 	return self
 }().init()
+
+describeDevice("Screen", "A screen that supports different sizes and different color modes")

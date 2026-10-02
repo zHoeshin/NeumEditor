@@ -669,3 +669,5 @@ window.Devices["ConsoleDevice"] = window["ConsoleDevice"] = function() {
 
 	return self.init
 }()()
+
+describeDevice("Console", "An 80 by 24 character terminal which supports ANSI codes")

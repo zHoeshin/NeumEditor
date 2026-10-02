@@ -1401,3 +1401,4 @@ default:
 }()
 
 
+describeFormat("BatPU-2", `<a href="https://github.com/mattbatwings/BatPU-2">BatPU-2</a> is an assembly language for an educational redstone computed created by <a href="https://www.youtube.com/mattbatwings">mattbatwings</a>`)

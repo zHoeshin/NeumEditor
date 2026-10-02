@@ -86,3 +86,5 @@ window["MouseDevice"] = window.Devices["MouseDevice"] = function() {
 
 	return self.init
 }()()
+
+describeDevice("Mouse", "Generic mouse input")

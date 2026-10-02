@@ -2140,3 +2140,4 @@ default:
 }()
 
 
+describeFormat("URCL", `<a href="https://github.com/ModPunchtree/URCL">Universal Reduced Computing Language</a> is a simple universal intermediate language`)

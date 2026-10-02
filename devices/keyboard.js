@@ -238,3 +238,5 @@ window["KeyboardDevice"] = window.Devices["KeyboardDevice"] = function(){
 
     return self.init
 }()()
+
+describeDevice("Keyboard", "Generic keyboard input")

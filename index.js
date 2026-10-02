@@ -26,6 +26,60 @@ function registerView(id, label, view) {
 }
 
 
+window["overlayTabClicked"] = function(self) {
+	document.querySelectorAll('div.overlaypage').forEach(t => t.classList.add('disabled'))
+	document.querySelectorAll('button.overlaytab').forEach(t => t.classList.add('disabled'))
+	document.querySelector(`div.overlaypage#${self.id}`).classList.remove('disabled')
+	self.classList.remove('disabled')
+}
+
+
+
+window["describeDevice"] = function(name, descr) {
+	const n = document.createElement("h4")
+	n.innerText = name
+
+	const d = document.createElement("p")
+	d.innerHTML = descr
+
+	const c = document.querySelector("div.overlaypage#helptabdevices")
+
+	c.appendChild(n)
+	c.appendChild(d)
+}
+
+window["describeFormat"] = function(name, descr) {
+	const n = document.createElement("h4")
+	n.innerText = name
+
+	const d = document.createElement("p")
+	d.innerHTML = descr
+
+	const c = document.querySelector("div.overlaypage#helptabformats")
+
+	c.appendChild(n)
+	c.appendChild(d)
+}
+
+function describeShortcut(name, keys) {
+	const c = document.querySelector("tbody#shortcutstable")
+
+	const row = document.createElement("tr")
+	const n = document.createElement("td")
+	n.innerText = name
+	row.appendChild(n)
+	const keylist = document.createElement("td")
+	for (let key of keys) {
+		const k = document.createElement("kbd")
+		k.innerText = key
+		keylist.appendChild(k)
+	}
+	row.appendChild(keylist)
+
+	c.appendChild(row)
+}
+
+
 class Editor {
 	// constructor() {
 	// 	throw Error("Abstract method not implemented")
@@ -337,6 +391,10 @@ window["RuntimeManager"] = function() {
 	let starttime = 0
 
 	const self = {
+		interceptsKeyboard() {
+			return running
+		},
+
 		compile() {
 			if (state != StateNone) {
 				// console.warn("Compiling while running")
@@ -558,24 +616,6 @@ window.onload = () => {
 
 document.addEventListener('keydown', (event) => {
     if (event.ctrlKey || event.metaKey) {
-        switch (event.code) {
-            case 'KeyS':
-            	if (event.shiftKey) {
-	    			event.preventDefault()
-	    			break
-            	} else {
-	            	event.preventDefault()
-	            	FileSystem.saveCurrent()
-	                break;
-	            }
-            case 'KeyQ':
-            	event.preventDefault()
-            	close(editorCurrent)
-                break;
-            case 'KeyN':
-            	event.preventDefault()
-            	break;
-        }
         if (event.altKey) {
         	switch (event.code) {
         	case "KeyR":
@@ -598,6 +638,25 @@ document.addEventListener('keydown', (event) => {
         		}
         		break
         	}
+        } else {
+	        switch (event.code) {
+	            case 'KeyS':
+	            	if (event.shiftKey) {
+		    			event.preventDefault()
+		    			break
+	            	} else {
+		            	event.preventDefault()
+		            	FileSystem.saveCurrent()
+		                break;
+		            }
+	            case 'KeyQ':
+	            	event.preventDefault()
+	            	close(editorCurrent)
+	                break;
+	            case 'KeyN':
+	            	event.preventDefault()
+	            	break;
+	        }
         }
     }
     else if (event.altKey) {
@@ -623,5 +682,36 @@ document.addEventListener('keydown', (event) => {
         	event.preventDefault()
     		break
     	}
+    } else {
+    	switch (event.code) {
+    	case "F1":
+    		if (RuntimeManager.interceptsKeyboard()) {
+    			return
+    		}
+    		document.querySelector("div.overlay#help").style.display = ""
+    		event.preventDefault()
+    		break
+    	case "Escape":
+    		if (RuntimeManager.interceptsKeyboard()) {
+    			return
+    		}
+    		if (document.querySelector("div.overlay#help").style.display == "") {
+    			document.querySelector("div.overlay#help").style.display = "none"
+    			event.preventDefault()
+    		}
+    		break
+    	}
     }
 });
+describeShortcut("Show this screen", ["F1"])
+describeShortcut("Save current file", ["Ctrl", "S"])
+describeShortcut("Close current file", ["Ctrl", "Q"])
+describeShortcut("Start screen recording", ["Ctrl", "Alt", "R"])
+describeShortcut("Stop screen recording", ["Ctrl", "Alt", "Q"])
+describeShortcut("Copy screen to clipboard", ["Ctrl", "Alt", "S"])
+describeShortcut("Save screen as image", ["Ctrl", "Alt", "S"])
+describeShortcut("Run current file", ["Alt", "R"])
+describeShortcut("Stop current execution", ["Alt", "B"])
+describeShortcut("Pause current execution", ["Alt", "P"])
+describeShortcut("Step through current file", ["Alt", "S"])
+describeShortcut("Compile current file", ["Alt", "C"])

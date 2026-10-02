@@ -75,6 +75,46 @@
             </div>
         </div>
     </div>
+
+    <div id="help" class="overlay">
+        <div id="helpwrapper" class="overlaywrapper">
+            <div class="overlayheader">
+                <h1 class="overlayname">Help</h1>
+                <button onclick="document.querySelector('div.overlay#help').style.display = 'none'" id="helpclose" class="overlayclose">X</button>
+            </div>
+            <div class="overlaycontents" id="helpcontents">
+                <div class="overlaytabs">
+                    <button onclick="overlayTabClicked(this)" class="overlaytab disabled" id="helptababout">About</button>
+                    <button onclick="overlayTabClicked(this)" class="overlaytab" id="helptabshortcuts">Keyboard shortcuts</button>
+                    <button onclick="overlayTabClicked(this)" class="overlaytab disabled" id="helptabdevices">Devices</button>
+                    <button onclick="overlayTabClicked(this)" class="overlaytab disabled" id="helptabformats">Supported languages</button>
+                </div>
+                <div class="overlaycurrentpage">
+                    <div class="overlaypage disabled" id="helptababout">
+                        <h4>Neum Editor</h4>
+
+                        Neum Editor is a web-emulator and web-IDE
+                    </div>
+                    <div class="overlaypage" id="helptabshortcuts">
+                        <table>
+                            <tbody id="shortcutstable">
+                                <tr>
+                                    
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="overlaypage disabled" id="helptabdevices">
+
+                    </div>
+                    <div class="overlaypage disabled" id="helptabformats">
+
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="devices/screen.js" type="module"></script>
     <script src="devices/timer.js" type="module"></script>
     <script src="devices/console.js" type="module"></script>
