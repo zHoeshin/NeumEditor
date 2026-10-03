@@ -79,6 +79,7 @@ class URCLMachine {
 	constructor (data, max_duration, callback_return_value, step, run, instructionlines, dwstart, editor, headers) {
 		this.pc = 0
 		this.memorysize = mp2(headers.MINHEAP + data.length + headers.MINSTACK)
+		this.memorymask = this.memorysize - 1
 		this.sp = this.memorysize
 		if (headers.BITS == 8) {
 			this.registers = new Uint8Array(headers.MINREG + 2).fill(0)
@@ -186,7 +187,7 @@ class URCLMachine {
         //     return 0
         // }
         this.sp = this.sp - 1
-        this.memory[this.sp] = value;
+        this.memory[this.sp & this.memorymask] = value;
 
         return 0
     }
@@ -196,7 +197,7 @@ class URCLMachine {
         //     this.sp = this.memorysize - 1
         //     return 0
         // }
-        const value = this.memory[this.sp];
+        const value = this.memory[this.sp & this.memorymask];
         this.sp = this.sp + 1
 
         return value;
@@ -207,7 +208,7 @@ class URCLMachine {
         //     console.error(`Heap overflow on store: ${addr} >= ${this.memorysize}`);
         //     return 0
         // }
-        this.memory[addr] = value;
+        this.memory[addr & this.memorymask] = value;
     
         return 0
     }
@@ -217,7 +218,7 @@ class URCLMachine {
         //     return 0
         // }
         // console.warn(this.memory[addr], "at", addr)
-        return this.memory[addr];
+        return this.memory[addr & this.memorymask];
     }
 
 	readPort(port) {

@@ -610,8 +610,6 @@ window.onload = () => {
 			document.querySelector(`div.device#${this.id}`).classList.toggle("disabled", this.classList.toggle("disabled"))
 		}
 	}
-
-	registerView("test", "Test view", document.createElement("div"))
 }
 
 document.addEventListener('keydown', (event) => {

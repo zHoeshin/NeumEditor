@@ -34,6 +34,14 @@ window.Devices["ScreenDevice"] = window["ScreenDevice"] = function () {
 				0xff
 			]
 		},
+		"RGB444": function (color) {
+			return [
+				(((color >> 8) & 0xf) << 4) | ((color >> 8) & 0xf),
+				(((color >> 4) & 0xf) << 4) | ((color >> 4) & 0xf),
+				(((color     ) & 0xf) << 4) | ((color     ) & 0xf),
+				0xff
+			]
+		},
 		"Monochrome": function(color) {
 			return [color, color, color, 0xff]
 		},
@@ -81,6 +89,7 @@ window.Devices["ScreenDevice"] = window["ScreenDevice"] = function () {
 	const clearColors = {
 		"RGBA8888": 0x000000ff,
 		"RGB565": 0,
+		"RGB444": 0,
 		"Monochrome": 0,
 		"Pico8": 0,
 	}

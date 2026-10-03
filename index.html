@@ -28,8 +28,8 @@
                 <button id="stop" class="control square" onclick="RuntimeManager.break()" style="background: gray;"><img src="icons/stop.svg"></button>
                 <button id="step" class="control square" onclick="RuntimeManager.pause(); RuntimeManager.step()" style="background: white;"><img src="icons/step.svg"></button>
                 <div id="viewcontrols">
-                    <button id="screen" class="control long disabled">screen</button>
                     <button id="code" class="control long disabled">code</button>
+                    <button id="screen" class="control long disabled">screen</button>
                     <button id="console" class="control long">console</button>
                 </div>
                 <button onclick="document.querySelector('div.overlay#help').style.display = ''" class="control square">?</button>
@@ -57,6 +57,7 @@
                         <select id="screencolormode">
                             <option>RGBA8888</option>
                             <option>RGB565</option>
+                            <option>RGB444</option>
                             <option>Monochrome</option>
                             <option>Pico8</option>
                         </select>
