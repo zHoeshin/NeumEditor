@@ -79,7 +79,7 @@ window.Devices["ScreenDevice"] = window["ScreenDevice"] = function () {
 		},
 	}
 	const clearColors = {
-		"RGBA8888": 0xff000000,
+		"RGBA8888": 0x000000ff,
 		"RGB565": 0,
 		"Monochrome": 0,
 		"Pico8": 0,

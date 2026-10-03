@@ -71,19 +71,23 @@ const PORTS = {
 	"GAMEPAD": 80,
 };
 
+function mp2(n) {
+	return 2 ** Math.ceil(Math.log2(n))
+}
+
 class URCLMachine {
-	constructor (data, max_duration, callback_return_value, step, run, instructionlines, editor, headers) {
+	constructor (data, max_duration, callback_return_value, step, run, instructionlines, dwstart, editor, headers) {
 		this.pc = 0
-		this.memorysize = 2 ** Math.ceil(Math.log2(headers.MINHEAP + data.length + headers.MINSTACK))
+		this.memorysize = mp2(headers.MINHEAP + data.length + headers.MINSTACK)
 		this.sp = this.memorysize
 		if (headers.BITS == 8) {
-			this.registers = new Uint8Array(headers.MINREG + 1).fill(0)
+			this.registers = new Uint8Array(headers.MINREG + 2).fill(0)
 		} else if (headers.BITS == 16) {
-			this.registers = new Uint16Array(headers.MINREG + 1).fill(0)
+			this.registers = new Uint16Array(headers.MINREG + 2).fill(0)
 		} else if (headers.BITS == 32) {
-			this.registers = new Uint32Array(headers.MINREG + 1).fill(0)
+			this.registers = new Uint32Array(headers.MINREG + 2).fill(0)
 		} else {
-			this.registers = new Uint32Array(headers.MINREG + 1).fill(0)
+			this.registers = new Uint32Array(headers.MINREG + 2).fill(0)
 		}
 		if (headers.BITS == 8) {
 			this.memory = new Uint8Array(this.memorysize)
@@ -234,7 +238,7 @@ class URCLMachine {
 		case PORTS.WAIT:
 			return ()=>TimerDevice.wait(this.wait)
 		case PORTS.RNG:
-			return Math.random() * this.mask
+			return (Math.random() * this.mask) | 0
 		case PORTS.MOUSE_X:
 			return MouseDevice.getX()
 			break;
@@ -1167,7 +1171,7 @@ const URCL = function(){
 
 
 			definitions = {...definitions, ...{
-				"HEAP":  new Token("num", 2 ** Math.ceil(Math.log2(definitions["MINHEAP"].value + definitions["MINSTACK"].value)), definitions["MINHEAP"].column, definitions["MINHEAP"].row, definitions["MINHEAP"].i),
+				"HEAP":  new Token("num", mp2(definitions["MINHEAP"].value + definitions["MINSTACK"].value), definitions["MINHEAP"].column, definitions["MINHEAP"].row, definitions["MINHEAP"].i),
 				"MSB":   new Token("num", 2 ** (definitions["BITS"].value - 1), definitions["BITS"].column, definitions["BITS"].row, definitions["BITS"].i),
 				"SMSB":  new Token("num", 2 ** (definitions["BITS"].value - 2), definitions["BITS"].column, definitions["BITS"].row, definitions["BITS"].i),
 				"MAX":   new Token("num", (2 ** (definitions["BITS"].value)) - 1, definitions["BITS"].column, definitions["BITS"].row, definitions["BITS"].i),
@@ -1200,6 +1204,8 @@ const URCL = function(){
 				RIGHT_Y: new Token("num", 1 <<  3, -1, -1, -1),
 			}}
 
+			const DWSTART = definitions.HEAP.value
+
 			const DEFINITIONS_ = {}
 
 			for (const key of Object.keys(definitions)) {
@@ -1212,6 +1218,15 @@ const URCL = function(){
 			DEFINITIONS["wrd sp"] = new Token("reg", -2, -1, -1, -1)
 			DEFINITIONS["wrd PC"] = new Token("reg", -1, -1, -1, -1)
 			DEFINITIONS["wrd SP"] = new Token("reg", -2, -1, -1, -1)
+
+
+			function resolveDefinition(token) {
+				while (token.key in DEFINITIONS) {
+					token = DEFINITIONS[token.key]
+				}
+				return token
+			}
+
 
 			j = 0
 			while (j < lines.length) {
@@ -1246,9 +1261,7 @@ const URCL = function(){
 							pendingLabels = []
 							const ops = []
 							for (let o of line.slice(1)) {
-								if (o.key in DEFINITIONS) {
-									o = DEFINITIONS[o.key]
-								}
+								o = resolveDefinition(o)
 								if (o.type == "rel") {
 									o = new Token("num", o.value + instructions.length, o.column, o.row, o.i)
 								}
@@ -1270,14 +1283,10 @@ const URCL = function(){
 						}
 						pendingLabels = []
 						for (let arg of line.slice(1)) {
-							if (arg.key in DEFINITIONS) {
-								arg = DEFINITIONS[arg.key]
-							}
+							arg = resolveDefinition(arg)
 							if (arg.type == "arr") {
 								for (let argn of arg.value) {
-									if (argn.key in DEFINITIONS) {
-										argn = DEFINITIONS[argn.key]
-									}
+									argn = resolveDefinition(argn)
 									if (argn.type == "arr") {
 										annotations.push({column: argn.column + 1, row: argn.row + 1, type: "error", text: `Nested arrays in DW not allowed ${argn.value}`})
 										unrecoverable = true
@@ -1306,9 +1315,7 @@ const URCL = function(){
 						pendingLabels = []
 						const ops = []
 						for (let o of line.slice(1)) {
-							if (o.key in DEFINITIONS) {
-								o = DEFINITIONS[o.key]
-							}
+							o = resolveDefinition(o)
 							if (o.type == "rel") {
 								o = new Token("num", o.value + instructions.length, o.column, o.row, o.i)
 							}
@@ -1351,7 +1358,7 @@ const URCL = function(){
 					if (argm.value == 0) {
 						return `0`
 					}else if (argm.value >= 0) {
-						return `(this.registers[${argm.value}] ${LIM})`;
+						return `(this.registers[${argm.value + 1}] ${LIM})`;
 					} else if (argm.value == -1) {
 						return `(this.pc)`;
 					} else if(argm.value == -2) {
@@ -1359,7 +1366,7 @@ const URCL = function(){
 					}
 					break
 				case "mem":
-					return `(${argm.value} ${LIM})`
+					return `(${argm.value + data.length} ${LIM})`
 					break
 				case "prt":
 					return `(${PORTS[argm.value.toUpperCase()]} /* ${argm.value} */ ${LIM})`
@@ -1394,7 +1401,7 @@ const URCL = function(){
 						// } else {
 						// 	return `this.registers[${dest.value}] = (${s}) & ${MASK};`
 						// }
-						return `this.registers[${dest.value}] = (${value}) ${LIM};`
+						return `this.registers[${dest.value + 1}] = (${value}) ${LIM};`
 					} else if (dest.value == -1) {
 						return `this.pc = (${value}) ${LIM};`
 					} else if(dest.value == -2) {
@@ -1407,6 +1414,9 @@ const URCL = function(){
 				}
 				return `null;`
 			}
+
+			const MEMSIZE = mp2(DEFINITIONS["def MINHEAP"].value + data.length + DEFINITIONS["def MINSTACK"].value)
+			const MEMMASK = MEMSIZE - 1
 
 
 	        const max_duration = "max_duration";
@@ -1445,7 +1455,7 @@ case "LOD":
 		annotations.push({column: opcode.column, row: opcode.row, type: "error", text: `Expected 2 operands for instruction ${opcode.value}`})
 		unrecoverable = true
 	} else {
-		instr += assign(args[0], `this.getMemory(${arg(args[1])})`)
+		instr += assign(args[0], `this.getMemory((${arg(args[1])}) & ${MEMMASK})`)
 	}
 	break;
 case "STR":
@@ -1453,7 +1463,7 @@ case "STR":
 		annotations.push({column: opcode.column, row: opcode.row, type: "error", text: `Expected 2 operands for instruction ${opcode.value}`})
 		unrecoverable = true
 	} else {
-		instr += `this.setMemory(${arg(args[0])}, ${arg(args[1])})`
+		instr += `this.setMemory((${arg(args[0])}) & ${MEMMASK}, ${arg(args[1])})`
 	}
 	break;
 case "BGE": // BRANCH
@@ -1725,7 +1735,7 @@ case "CPY":
 		annotations.push({column: opcode.column, row: opcode.row, type: "error", text: `Expected 2 operands for instruction ${opcode.value}`})
 		unrecoverable = true
 	} else {
-		instr += `this.setMemory(${arg(args[0])}, this.getMemory(${arg(args[1])}))`
+		instr += `this.setMemory((${arg(args[0])}) & ${MEMMASK}, this.getMemory((${arg(args[1])}) & ${MEMMASK}))`
 	}
 	break;
 case "BRC": // BRANCH
@@ -1745,11 +1755,12 @@ case "BNC": // BRANCH
 	}
 	break;
 case "MLT":
+case "MUL":
 	if (args.length != 3) {
 		annotations.push({column: opcode.column, row: opcode.row, type: "error", text: `Expected 3 operands for instruction ${opcode.value}`})
 		unrecoverable = true
 	} else {
-		instr += assign(args[0], `Math.imul(this.toSigned(${arg(args[1])}), this.toSigned(${arg(args[2])}))`)
+		instr += assign(args[0], `Math.imul((${arg(args[1])}), (${arg(args[2])}))`)
 	}
 	break;
 case "DIV":
@@ -1757,7 +1768,7 @@ case "DIV":
 		annotations.push({column: opcode.column, row: opcode.row, type: "error", text: `Expected 3 operands for instruction ${opcode.value}`})
 		unrecoverable = true
 	} else {
-		instr += assign(args[0], `${arg(args[2])} === 0 ? this.mask : Math.trunc(this.toSigned(${arg(args[1])}) / this.toSigned(${arg(args[2])}))`)
+		instr += assign(args[0], `${arg(args[2])} === 0 ? -1 : ((${arg(args[1])} >>> 0) / (${arg(args[2])} >>> 0) | 0)`)
 	}
 	break;
 case "MOD":
@@ -1765,7 +1776,8 @@ case "MOD":
 		annotations.push({column: opcode.column, row: opcode.row, type: "error", text: `Expected 3 operands for instruction ${opcode.value}`})
 		unrecoverable = true
 	} else {
-		instr += assign(args[0], `${arg(args[1])} % ${arg(args[2])}`)
+		// instr += assign(args[0], `${arg(args[1])} % ${arg(args[2])}`)
+		instr += assign(args[0], `${arg(args[2])} === 0 ? -1 : (${arg(args[1])} % ${arg(args[2])})`)
 	}
 	break;
 case "BSR": // BRANCH
@@ -1869,7 +1881,7 @@ case "LLOD":
 		annotations.push({column: opcode.column, row: opcode.row, type: "error", text: `Expected 3 operands for instruction ${opcode.value}`})
 		unrecoverable = true
 	} else {
-		instr += assign(args[0], `this.getMemory(${arg(args[1])} + ${arg(args[2])})`)
+		instr += assign(args[0], `this.getMemory((${arg(args[1])} + ${arg(args[2])}) & ${MEMMASK})`)
 	}
 	break;
 case "LSTR":
@@ -1877,7 +1889,7 @@ case "LSTR":
 		annotations.push({column: opcode.column, row: opcode.row, type: "error", text: `Expected 3 operands for instruction ${opcode.value}`})
 		unrecoverable = true
 	} else {
-		instr += `this.setMemory(${arg(args[0])} + ${arg(args[1])}, ${arg(args[2])})`
+		instr += `this.setMemory((${arg(args[0])} + ${arg(args[1])}) & ${MEMMASK}, ${arg(args[2])})`
 	}
 	break;
 case "SDIV":
@@ -1885,7 +1897,7 @@ case "SDIV":
 		annotations.push({column: opcode.column, row: opcode.row, type: "error", text: `Expected 3 operands for instruction ${opcode.value}`})
 		unrecoverable = true
 	} else {
-		instr += assign(args[0], `${arg(args[2])} === 0 ? this.mask : (this.toSigned(${arg(args[1])}) / this.toSigned(${arg(args[2])}))`)
+		instr += assign(args[0], `${arg(args[2])} === 0 ? -1 : ((this.toSigned(${arg(args[1])}) / this.toSigned(${arg(args[2])})) | 0)`)
 	}
 	break;
 case "SBRL": // BRANCH
@@ -1969,7 +1981,7 @@ case "IN": // IO
 			this.pc--;
 			if (cbvalue !== undefined) {
 				${assign(args[0], `cbvalue`)};
-				this.pc   = ${i + 1}
+				this.pc   ++;
 				cbvalue = undefined
 			} else {
 				let v = this.readPort(${arg(args[1])})
@@ -1977,7 +1989,7 @@ case "IN": // IO
 					return [2, i, v]
 				} else {
 					${assign(args[0], `v`)}
-					this.pc   = ${i + 1}
+					this.pc   ++
 				}
 			}
 		`
@@ -2020,7 +2032,7 @@ case "ASSERT_NEQ":
 		annotations.push({column: opcode.column, row: opcode.row, type: "error", text: `Expected 2 operands for instruction ${opcode.value}`})
 		unrecoverable = true
 	} else {
-		instr += `if(${arg(args[0])} != ${arg(args[1])}) { console.log("failed assert ${opcode.row + 1}") } else { console.log("assert succeeded ${opcode.row + 1}") };`
+		instr += `if(${arg(args[0])} == ${arg(args[1])}) { console.log("failed assert ${opcode.row + 1}") } else { console.log("assert succeeded ${opcode.row + 1}") };`
 	}
 	break;
 case "UMLT":
@@ -2045,8 +2057,12 @@ default:
 	break;
 }
 				
-	            step += `case ${i}: // ${opcode.value}\n`;
-	            run += `case ${i}: // ${opcode.value}\n`;
+				instr = "{\n\t" + instr + "\n}"
+
+				const l = `${opcode.value} ${args.map(a => `${a.type}:${a.value}`).join(" ")}`.replace(/\n/g, "\\n")
+
+	            step += `case ${i}: // ${l} @ ${opcode.row + 1}\n`;
+	            run += `case ${i}: // ${l} @ ${opcode.row + 1}\n`;
 	            run += `i++;\n`
                 step += `${instr}; return [${0}, 0, null];\n`;
                 run += `${instr};\n;`
@@ -2119,7 +2135,7 @@ default:
 	        }
 
 
-	        return new URCLMachine(DATA, max_duration, callback_return_value, step, run, INSTRUCTIONLINES, this.editor, {
+	        return new URCLMachine(DATA, max_duration, callback_return_value, step, run, INSTRUCTIONLINES, DWSTART, this.editor, {
 	        	"BITS": DEFINITIONS["def BITS"].value,
 				"MINREG": DEFINITIONS["def MINREG"].value,
 				"MINHEAP": DEFINITIONS["def MINHEAP"].value,

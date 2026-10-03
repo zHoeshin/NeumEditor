@@ -11,7 +11,7 @@ class BatPUMachine {
 		this.pc2line = INSTRUCTIONLINES
 		this.editor = editor
 		this.markedline = 0
-		this.stack = new Uint8Array(16)
+		this.stack = new Uint16Array(16)
 
 		this.x = 0
 		this.y = 0
@@ -44,10 +44,10 @@ class BatPUMachine {
     			this.y = value
     			break
     		case 242:
-    			ScreenDevice.setPixel(this.x & 0b11111, this.y & 0b11111, 0xffffffff)
+    			ScreenDevice.setPixel(this.x & 0b11111, (31 - this.y) & 0b11111, 0xffffffff)
     			break
     		case 243:
-    			ScreenDevice.setPixel(this.x & 0b11111, this.y & 0b11111, 0xff000000)
+    			ScreenDevice.setPixel(this.x & 0b11111, (31 - this.y) & 0b11111, 0x000000ff)
     			break
     		case 245:
     			ScreenDevice.swap()
@@ -97,13 +97,22 @@ class BatPUMachine {
     	if (addr >= 240) {
     		switch (addr) {
     		case 244:
-    			return (ScreenDevice.getPixel(this.x & 0b11111, this.y & 0b11111) == 0xffffffff) | 0
+    			return (ScreenDevice.getPixel(this.x & 0b11111, (31 - this.y) & 0b11111) == 0xffffffff) | 0
     			break
     		case 254:
     			return (Math.random() * 256) | 0
     			break
     		case 255:
-    			return KeyboardDevice.getPad()
+    			return (
+		    		KeyboardDevice.isPressed(KeyboardDevice.usb.Enter) << 7 |
+		    		KeyboardDevice.isPressed(KeyboardDevice.usb.Backspace) << 6 |
+		    		KeyboardDevice.isPressed(KeyboardDevice.usb.KeyX) << 5 |
+		    		KeyboardDevice.isPressed(KeyboardDevice.usb.KeyZ) << 4 |
+		    		KeyboardDevice.isPressed(KeyboardDevice.usb.ArrowUp) << 3 |
+		    		KeyboardDevice.isPressed(KeyboardDevice.usb.ArrowRight) << 2 |
+		    		KeyboardDevice.isPressed(KeyboardDevice.usb.ArrowDown) << 1 |
+		    		KeyboardDevice.isPressed(KeyboardDevice.usb.ArrowLeft)
+    			)
     			break
     		}
     		return 0
@@ -117,7 +126,7 @@ class BatPUMachine {
     }
 
     pushStack(value) {
-    	this.stack[this.sp & 0xf] = value
+    	this.stack[this.sp & 0xf] = value & 0b11_1111_1111
     	this.sp++
     }
 
@@ -920,7 +929,7 @@ case "INC":
 			break
 		}
 		let a = args[0].value
-		instr += `{let v = ${gr(a)} + 1; ${sr(a)} v; this.zero = (v & 0xff) == 0; this.carry = v > 0xff; }`
+		instr += `{let v = ${gr(a)} + 1; ${sr(a)} v; this.zero = (v & 0xff) == 0; this.carry = v == 0; }`
 	}
 	break;
 case "DEC":
@@ -934,7 +943,7 @@ case "DEC":
 			break
 		}
 		let a = args[0].value
-		instr += `{let v = ${gr(a)} - 1; ${sr(a)} v; this.zero = (v & 0xff) == 0; this.carry = v >= 0; }`
+		instr += `{let v = ${gr(a)} - 1; ${sr(a)} v; this.zero = (v & 0xff) == 0; this.carry = v == 0xff; }`
 	}
 	break;
 case "SUB":
@@ -1204,7 +1213,7 @@ case "LOD":
 		}
 		let a = args[0].value
 		let d = args[1].value
-		let o = args[2].value
+		let o = (((args[2].value >>> 0) << (32 - 4)) >> (32 - 4))
 		instr += `${sr(d)} this.getMemory((${gr(a)} + ${o}) & 0xff);`
 	} else {
 		annotations.push({column: opcode.column, row: opcode.row, type: "error", text: `Expected 2 or 3 operands for instruction ${opcode.value}`})
@@ -1244,7 +1253,7 @@ case "STR":
 		}
 		let a = args[0].value
 		let d = args[1].value
-		let o = args[2].value
+		let o = (((args[2].value >>> 0) << (32 - 4)) >> (32 - 4))
 		instr += `this.setMemory((${gr(a)} + ${o}) & 0xff, ${gr(d)});`
 	} else {
 		annotations.push({column: opcode.column, row: opcode.row, type: "error", text: `Expected 2 or 3 operands for instruction ${opcode.value}`})
@@ -1366,7 +1375,7 @@ default:
 	            run += `case ${i}: // ${opcode.value}\n`;
 	            run += `i++;\n`
                 step += `${instr}; return [${0}, 0, null];\n`;
-                run += `${instr};\n;`
+                run += `${instr}; break;\n;`
                 if (instr.includes(".pc =") && !instr.includes("break")) {
                 	run += "break;"
                 }
@@ -1391,6 +1400,13 @@ default:
 	        for (let i = 0; i < instructions.length; i++) {
 	        	INSTRUCTIONLINES[i] = instructions[i][0].row
 	        }
+
+        	document.querySelector("input#screenwidth").value = 32
+        	document.querySelector("input#screenwidth").dispatchEvent(new Event('change', { bubbles: true }))
+        	document.querySelector("input#screenheight").value = 32
+        	document.querySelector("input#screenheight").dispatchEvent(new Event('change', { bubbles: true }))
+        	document.querySelector("select#screencolormode").value = "RGBA8888"
+        	document.querySelector("select#screencolormode").dispatchEvent(new Event('change', { bubbles: true }))
 
 
 	        return new BatPUMachine(max_duration, callback_return_value, step, run, INSTRUCTIONLINES, this.editor, )

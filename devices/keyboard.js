@@ -125,6 +125,8 @@ window["KeyboardDevice"] = window.Devices["KeyboardDevice"] = function(){
     }
 
     const self = {
+    	usb,
+
 		getAtOffsetPacked(bits = 8) {
 			return down.slice(offset, offset + bits).reduceRight((acc, v) => (acc << 1) + v, 0)
 		},
@@ -132,6 +134,10 @@ window["KeyboardDevice"] = window.Devices["KeyboardDevice"] = function(){
 
 		setOffset(o) {
 			offset = o
+		},
+
+		isPressed(key) {
+			return down[key]
 		},
 
 
