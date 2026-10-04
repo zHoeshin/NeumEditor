@@ -7,6 +7,8 @@ window.Devices["ConsoleDevice"] = window["ConsoleDevice"] = function() {
 	const bgtextWrapper = document.querySelector("pre#consoletextbg")
 	const selectionCanvas = document.querySelector("canvas#consoleselection")
 
+	const input = document.querySelector("textarea#consoleinput")
+
 	const cursorElement = document.querySelector("div#consolecursor")
 
 	const wrapper = document.querySelector("div#consolewrapper")
@@ -664,6 +666,21 @@ window.Devices["ConsoleDevice"] = window["ConsoleDevice"] = function() {
 
 		needSwap() {
 			return needsSwap
+		},
+
+		getInputChar() {
+			if (input.value.length == 0) {
+				return () => {input.addEventListener('input', () => {
+					const char = input.value.codePointAt(0)
+					input.value = input.value.slice(1)
+					RuntimeManager.sendInput(char)
+				}, {once: true});}
+			} else {
+				const char = input.value.codePointAt(0)
+				input.value = input.value.slice(1)
+				console.warn(char)
+				return char
+			}
 		}
 	}
 

@@ -177,7 +177,13 @@ class PlainTextEditor extends Editor {
 window["FileSystem"] = function() {
 	let dirhandle = null
 
+	const onLoadFileSystem = []
+
 	const self = {
+		addOnLoadFileSystem(c) {
+			onLoadFileSystem.push(c)
+		},
+
 		async loadFileSystem() {
 			document.querySelector("button#openfilesystem").innerText = "..."
 			let root = document.querySelector("div#filepanel")
@@ -188,6 +194,37 @@ window["FileSystem"] = function() {
 			document.querySelector("button#openfilesystem").remove()
 			document.querySelector("div#openfilesystem").remove()
 	        await self.buildTree(dirhandle, root, "")
+
+	        onLoadFileSystem.forEach(c => c())
+		},
+
+		async getFileText(path, def="") {
+			const fh = await dirhandle.getFileHandle(path, {create: true})
+			const f = await fh.getFile()
+			const t = await f.text()
+			if (t == "" && def != "") {
+				const w = await fh.createWritable()
+				await w.write(def)
+				await w.close()
+				return def
+			}
+			return t
+		},
+		async setFileText(path, text) {
+			const fh = await dirhandle.getFileHandle(path, {create: true})
+			const f = await fh.getFile()
+			const w = await fh.createWritable()
+			await w.write(text)
+			await w.close()
+		},
+
+		async getFileHandle(path) {
+			const p = path.slice(1).split("/")
+			const d = dirhandle
+			for(let i = 0; i < p.length - 1; i++) {
+				d = await d.getDirectoryHandle(p[1], {create: true})
+			}
+			return await d.getFileHandle(p.pop(), {create: true})
 		},
 
 		async saveCurrent() {
@@ -225,11 +262,20 @@ window["FileSystem"] = function() {
 
 					const nself = document.createElement("summary")
 					const b = document.createElement("button")
+					b.draggable = true
 					b.className = "filesystem button"
 					b.innerText = entry.name
 					b.onclick = function() {
 						list.open = !list.open
 					}
+					
+					b.addEventListener('dragstart', (e) => {
+						e.dataTransfer.setData('neumeditor/directory', JSON.stringify({
+							path: epath,
+							name: entry.name,
+						}))
+						e.dataTransfer.effectAllowed = 'copy';
+					})
 					// nself.innerHTML = `<button class="filesystem button" onclick="console.log(\`${epath}\`)">${entry.name}</button>`
 					nself.appendChild(b)
 
@@ -243,15 +289,29 @@ window["FileSystem"] = function() {
 					list.appendChild(files)
 					parent.appendChild(list)
 				} else if(entry.kind == "file") {
+					if (["/.drives"].includes(epath)) {
+						continue
+					}
+
 					const nself = document.createElement("li")
 					nself.className = "filesystem file"
 					const b = document.createElement("button")
+
+					b.draggable = true
 					b.innerText = entry.name
 					b.className = "filesystem button"
 
 					const h = await dirhandle.getFileHandle(entry.name)
 					b.addEventListener("dblclick", () => {
 						edit(epath, entry.name, h)
+					})
+					
+					b.addEventListener('dragstart', (e) => {
+						e.dataTransfer.setData('neumeditor/file', JSON.stringify({
+							path: epath,
+							name: entry.name,
+						}))
+						e.dataTransfer.effectAllowed = 'copy';
 					})
 
 					nself.appendChild(b)
@@ -395,7 +455,7 @@ window["RuntimeManager"] = function() {
 			return running
 		},
 
-		compile() {
+		async compile() {
 			if (state != StateNone) {
 				// console.warn("Compiling while running")
 				// return false
@@ -410,7 +470,7 @@ window["RuntimeManager"] = function() {
 				console.warn("No editor to compile")
 				return false
 			}
-			runtime = editor.compile()
+			runtime = await editor.compile()
 			if (!runtime) {
 				console.warn("Failed to compile")
 				return false
@@ -425,9 +485,9 @@ window["RuntimeManager"] = function() {
 			return true
 		},
 
-		run() {
+		async run() {
 			if (path == null || path != editorCurrent || runtime == null) {
-				if (!self.compile()) {
+				if (!await self.compile()) {
 					console.error("Could not compile")
 					return
 				}
@@ -446,7 +506,7 @@ window["RuntimeManager"] = function() {
 			document.querySelector("button#step").style.background = "white"
 		},
 
-		frame() {
+		async frame() {
 			if (!runnable || !running) {
 				cancelAnimationFrame(animationframe)
 				animationframe = -1
@@ -489,6 +549,7 @@ window["RuntimeManager"] = function() {
 	       		runnable = false
 	       		running = false
 				runtime?.markCurrentLine(runtime.getLine())
+				await runtime.dispose()
 				runtime = null
 				state = StateNone
 				cancelAnimationFrame(animationframe)
@@ -508,12 +569,13 @@ window["RuntimeManager"] = function() {
 
 		},
 
-		break() {
+		async break() {
        		console.info("Execution broken")
        		console.log(runtime)
        		runnable = false
        		running = false
 			runtime?.markCurrentLine(runtime.getLine())
+			await runtime.dispose()
 			runtime = null
 			state = StateNone
 			cancelAnimationFrame(animationframe)
@@ -526,9 +588,9 @@ window["RuntimeManager"] = function() {
 			document.querySelector("button#step").style.background = "white"
 		},
 
-		step() {
+		async step() {
 			if (path == null || path != editorCurrent || runtime == null) {
-				if (!self.compile()) {
+				if (!await self.compile()) {
 					console.error("Could not compile")
 					return
 				}
@@ -563,6 +625,7 @@ window["RuntimeManager"] = function() {
 	       		running = false
 				runtime?.markCurrentLine(runtime.getLine())
 				runtime = null
+				await runtime.dispose()
 				state = StateNone
 				cancelAnimationFrame(animationframe)
 				animationframe = -1
@@ -603,6 +666,120 @@ window["RuntimeManager"] = function() {
 
 	return self
 }()
+
+
+
+
+window["DriveManager"] = await (function() {
+	const drives = []
+	const driveTemplate = document.querySelector("template#drive-template")
+	const container = document.querySelector("div.drivelist")
+
+	const self = {
+		init() {
+			FileSystem.addOnLoadFileSystem(self.onLoadFileSystem)
+
+			return self
+		},
+
+		async saveDrives() {
+			await FileSystem.setFileText(".drives", JSON.stringify(drives.map(d => {
+				return {
+					path: d.path, name: d.name, size: d.size, type: d.type
+				}
+			})))
+		},
+
+		async onLoadFileSystem() {
+			const info = JSON.parse(await FileSystem.getFileText(".drives", "[]"))
+
+			for (let d of info) {
+				const o = self.createDrive()
+				const drive = o.drive
+
+				o.path = d.path
+				o.type = d.type
+				o.size = d.size
+				o.name = d.name
+
+				drive.querySelector("input#path").value = d.path
+				drive.querySelector("select#type").value = d.type
+				drive.querySelector("input#size").value = d.size
+				drive.querySelector("input#name").value = d.name
+			}
+		},
+
+		createDrive() {
+			const drive = driveTemplate.content.cloneNode(true).querySelector("div.drive")
+			drive.querySelector(".deletedrive").addEventListener("dbclick", () => self.removeDrive(drive))
+			container.appendChild(drive)
+			const o = {path: "", name: "", size: 0, type: "Binary", drive: drive}
+
+			drive.querySelector("input#path").addEventListener("input", async (e) => {
+				o.path = e.target.value
+				await self.saveDrives()
+			})
+			drive.querySelector("select#type").addEventListener("input", async (e) => {
+				o.type = e.target.value
+				await self.saveDrives()
+			})
+			drive.querySelector("input#size").addEventListener("input", async (e) => {
+				const size = Number(e.target.value)
+
+				o.size = size
+
+				const fh = await FileSystem.getFileHandle(o.path)
+				const f = await fh.getFile()
+
+				const c = new Uint8Array(f.arrayBuffer())
+				const contents = new Uint8Array(size).fill(0)
+				contents.set(c.subarray(0, size))
+
+				const w = await fh.createWritable()
+				w.write(contents)
+				w.close()
+
+				await self.saveDrives()
+			})
+			drive.querySelector("input#name").addEventListener("input", async (e) => {
+				o.name = e.target.value
+				await self.saveDrives()
+			})
+
+			drive.querySelector("div.drivedroppath").addEventListener("dragover", (e) => {
+				e.preventDefault()
+			})
+			drive.querySelector("div.drivedroppath").addEventListener("drop", async (e) => {
+				const { path, name } = JSON.parse(e.dataTransfer.getData('neumeditor/file'))
+				o.path = path
+				drive.querySelector("input#path").value = path
+				await self.saveDrives()
+			})
+
+			drive.object = o
+
+			drives.push(o)
+
+			return o
+		},
+
+		async getDriveHandle(name) {
+			const drive = drives.find(o => o.name == name)
+
+			if(!drive) {
+				return null
+			}
+
+			return {...drive, handle: await FileSystem.getFileHandle(drive.path)}
+		}
+	}
+	return self.init
+}())()
+
+
+
+
+
 
 window.onload = () => {
 	for (let b of document.querySelectorAll("button.control.long")) {

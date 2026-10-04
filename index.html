@@ -28,16 +28,17 @@
                 <button id="stop" class="control square" onclick="RuntimeManager.break()" style="background: gray;"><img src="icons/stop.svg"></button>
                 <button id="step" class="control square" onclick="RuntimeManager.pause(); RuntimeManager.step()" style="background: white;"><img src="icons/step.svg"></button>
                 <div id="viewcontrols">
-                    <button id="code" class="control long disabled">code</button>
+                    <button id="code" class="control long">code</button>
                     <button id="screen" class="control long disabled">screen</button>
-                    <button id="console" class="control long">console</button>
+                    <button id="console" class="control long disabled">console</button>
+                    <button id="drives" class="control long disabled">drives</button>
                 </div>
                 <button onclick="document.querySelector('div.overlay#help').style.display = ''" class="control square">?</button>
                 <button class="control square"><img src="icons/gear.svg"></button>
             </div>
 
             <div id="working">
-                <div id="code" class="device disabled">
+                <div id="code" class="device">
                     
                     <div id="filelist">
                         <div id="editlist"></div>
@@ -63,7 +64,7 @@
                         </select>
                     </div>
                 </div>
-                <div id="console" class="device">
+                <div id="console" class="device disabled">
                     <div id="consolewrapper" style="--w: 10; --h: 10;" tabindex="0">
                         <canvas id="consolebg"></canvas>
                         <div id="consoletext" tabindex="0">
@@ -73,6 +74,30 @@
                         <canvas id="consoleselection"></canvas>
                         <div id="consolecursor" style="--x: 0; --y: 0"></div>
                     </div>
+                    <textarea id="consoleinput" row="5"></textarea>
+                </div>
+                <div id="drives" class="device disabled">
+                    <div class="drivelist">
+                        <template id="drive-template">
+                            <div class="drive">
+                                <div class="drivecontents">
+                                    <div class="drivepath">
+                                        <input type="text" id="path" placeholder="Drive path">
+                                        <div class="drivedroppath">Drag file here</div>
+                                    </div>
+                                    <div class="driveinfo">
+                                        <input type="text" id="name" placeholder="Drive name">
+                                        <input type="number" id="size" placeholder="Drive size">
+                                        <select id="type" class="drivetype">
+                                            <option>Binary</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <button class="deletedrive">Delete</button>
+                            </div>
+                        </template>
+                    </div>
+                    <button id="adddrive" onclick="DriveManager.createDrive()">+</button>
                 </div>
             </div>
         </div>

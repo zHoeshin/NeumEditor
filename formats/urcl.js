@@ -123,6 +123,32 @@ class URCLMachine {
 		this.markedline = 0
 	}
 
+	async initDrive(drive) {
+		this.drive = drive
+		this.drivehandle = drive?.handle
+		const f = await this.drivehandle?.getFile()
+		if (this.bits == 8) {
+			this.driveContents = new Uint8Array(await f.arrayBuffer())
+		} else if (this.bits == 16) {
+			this.driveContents = new Uint16Array(await f.arrayBuffer())
+		} else if (this.bits == 32) {
+			this.driveContents = new Uint32Array(await f.arrayBuffer())
+		} else {
+			this.driveContents = new Uint32Array(await f.arrayBuffer())
+		}
+		this.addr = 0
+		this.page = 0
+		return this
+	}
+
+	async dispose() {
+		const w = await this.drivehandle?.createWritable()
+		if (!w) {
+			return
+		}
+		await w.write(this.driveContents)
+	}
+
 	markCurrentLine(line) {
 		// this.editor.getSession().removeGutterDecoration(this.markedline, "current-executed-line-marker")
 
@@ -258,6 +284,8 @@ class URCLMachine {
 		case PORTS.GAMEPAD:
 			return KeyboardDevice.getPad()
 			break
+		case PORTS.TEXT:
+			return ConsoleDevice.getInputChar()
 		case PORTS.CURKEY:
 			return ([KeyboardDevice.getCurrentUSB(), KeyboardDevice.setCurrentUSB(0)][0])
 		case PORTS.CURKEYCODE:
@@ -267,6 +295,12 @@ class URCLMachine {
 		case PORTS.KEY:
 			return KeyboardDevice.getAtOffsetPacked(this.bits)
 			break;
+		case PORTS.ADDR:
+			return this.addr
+		case PORTS.PAGE:
+			return this.page
+		case PORTS.BUS:
+			return this.driveContents[this.page << this.bits + this.addr]
 		default:
 			return null
 		}
@@ -321,6 +355,15 @@ class URCLMachine {
 				ConsoleDevice.outChar(char)
 			}
 			break
+		case PORTS.ADDR:
+			this.addr = value
+			break
+		case PORTS.PAGE:
+			this.page = value
+			break
+		case PORTS.BUS:
+			this.driveContents[this.page << this.bits + this.addr] = value
+			return
 		}
 	}
 }
@@ -497,8 +540,7 @@ const URCL = function(){
 
 		compiles() {return true}
 
-
-		compile() {
+		async compile() {
 			// // const lines = this.editor.getValue().match(/"(?:\\.|[^"\\])*(?:"|$)|[^\n]+/g).map(line => line.match(/"(?:\\.|[^"\\])*(?:"|$)|\S+/g))
 			// const lines = (this.editor.getValue().replace(/\r\n/g, "\n")
 			// 	.match(/(?:[^\n"'\[]|"(?:\\.|[^"\\])*(?:"|$)|'(?:\\.|[^'\\])*(?:'|$)|\[(?:"(?:\\.|[^"\\])*(?:"|$)|'(?:\\.|[^'\\])*(?:'|$)|[^\]])*(?:\]|$)|^$)+/gm) ?? [])
@@ -1101,6 +1143,21 @@ const URCL = function(){
 							}
 							META["SCREEN_COLOR"] = p.value
 							break }
+						case "DRIVE":
+							if (line.length == 1) {
+								annotations.push({column: line[0].column + 1, row: line[0].row + 1, type: "error", text: `Expected drive name`})
+								break
+							}
+							if (line.length != 2) {
+								annotations.push({column: line[0].column + 1, row: line[0].row + 1, type: "error", text: `Expected just drive name, ignoring extra parameters`})
+							}
+							let p = line[1]
+							if (p.type != "str") {
+								annotations.push({column: line[1].column + 1, row: line[1].row + 1, type: "error", text: `Expected drive name to be a string`})
+								break
+							}
+							META["DRIVE"] = p.value
+							break
 					}
 					j += 1
 					continue
@@ -1309,6 +1366,27 @@ const URCL = function(){
 								data.push(arg)
 							}
 						}
+					} else if (line[0].value.toLowerCase().startsWith("in") && line[0].value.toLowerCase().includes("%")) {
+						const pi = line[0].value.indexOf("%")
+						const opcode = line[0].value.slice(0, i)
+						const port = resolveDefinition(new Token("prt", line[0].value.slice(i), line[0].column + len(pi), line[0].row, line[0].i + len(pi)))
+
+						for (let p of pendingLabels) {
+							labels[p.value] = instructions.length
+						}
+						pendingLabels = []
+						const ops = []
+						for (let o of line.slice(1)) {
+							o = resolveDefinition(o)
+							if (o.type == "rel") {
+								o = new Token("num", o.value + instructions.length, o.column, o.row, o.i)
+							}
+							ops.push(o)
+						}
+
+						ops.push(port)
+
+						instructions.push([new Token("wrd", opcode, line[0].column, line[0].row, line[0].i), ops])
 					} else {
 						for (let p of pendingLabels) {
 							labels[p.value] = instructions.length
@@ -2135,8 +2213,9 @@ default:
 	        	document.querySelector("select#screencolormode").dispatchEvent(new Event('change', { bubbles: true }))
 	        }
 
+	        const DRIVE = await DriveManager.getDriveHandle(META["DRIVE"])
 
-	        return new URCLMachine(DATA, max_duration, callback_return_value, step, run, INSTRUCTIONLINES, DWSTART, this.editor, {
+	        return await (new URCLMachine(DATA, max_duration, callback_return_value, step, run, INSTRUCTIONLINES, DWSTART, this.editor, {
 	        	"BITS": DEFINITIONS["def BITS"].value,
 				"MINREG": DEFINITIONS["def MINREG"].value,
 				"MINHEAP": DEFINITIONS["def MINHEAP"].value,
@@ -2149,7 +2228,7 @@ default:
 				"UHALF": DEFINITIONS["def UHALF"].value,
 				"LHALF": DEFINITIONS["def LHALF"].value,
 				"RUN": DEFINITIONS["def RUN"].value,
-	        })
+	        })).initDrive(DRIVE)
 		}
 	}
 
