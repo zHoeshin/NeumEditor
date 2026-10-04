@@ -575,7 +575,7 @@ window["RuntimeManager"] = function() {
        		runnable = false
        		running = false
 			runtime?.markCurrentLine(runtime.getLine())
-			await runtime.dispose()
+			await runtime?.dispose()
 			runtime = null
 			state = StateNone
 			cancelAnimationFrame(animationframe)
@@ -727,6 +727,11 @@ window["DriveManager"] = await (function() {
 				const size = Number(e.target.value)
 
 				o.size = size
+
+				if (size < 0) {
+					await self.saveDrives()
+					return
+				}
 
 				const fh = await FileSystem.getFileHandle(o.path)
 				const f = await fh.getFile()

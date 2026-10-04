@@ -126,7 +126,12 @@ class URCLMachine {
 	async initDrive(drive) {
 		this.drive = drive
 		this.drivehandle = drive?.handle
+		this.addr = 0
+		this.page = 0
 		const f = await this.drivehandle?.getFile()
+		if (!f) {
+			return this
+		}
 		if (this.bits == 8) {
 			this.driveContents = new Uint8Array(await f.arrayBuffer())
 		} else if (this.bits == 16) {
@@ -136,8 +141,6 @@ class URCLMachine {
 		} else {
 			this.driveContents = new Uint32Array(await f.arrayBuffer())
 		}
-		this.addr = 0
-		this.page = 0
 		return this
 	}
 
@@ -300,7 +303,7 @@ class URCLMachine {
 		case PORTS.PAGE:
 			return this.page
 		case PORTS.BUS:
-			return this.driveContents[this.page << this.bits + this.addr]
+			return this.driveContents[(this.page << this.bits) + this.addr]
 		default:
 			return null
 		}
@@ -362,7 +365,7 @@ class URCLMachine {
 			this.page = value
 			break
 		case PORTS.BUS:
-			this.driveContents[this.page << this.bits + this.addr] = value
+			this.driveContents[(this.page << this.bits) + this.addr] = value
 			return
 		}
 	}
