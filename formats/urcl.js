@@ -289,6 +289,14 @@ class URCLMachine {
 			break
 		case PORTS.TEXT:
 			return ConsoleDevice.getInputChar()
+		case PORTS.NUMB:
+		case PORTS.INT:
+		case PORTS.UINT:
+			return ConsoleDevice.getBeforeConfirm((n) => parseInt(n))
+		case PORTS.BIN:
+			return ConsoleDevice.getBeforeConfirm((n) => parseInt(n, 2))
+		case PORTS.HEX:
+			return ConsoleDevice.getBeforeConfirm((n) => parseInt(n, 16))
 		case PORTS.CURKEY:
 			return ([KeyboardDevice.getCurrentUSB(), KeyboardDevice.setCurrentUSB(0)][0])
 		case PORTS.CURKEYCODE:
@@ -353,8 +361,24 @@ class URCLMachine {
 		case PORTS.TEXT:
 			ConsoleDevice.outCodePoint(value)
 			break
+		case PORTS.INT:
 		case PORTS.NUMB:
-			for(const char of `${value}`) {
+			for(const char of `${value << (32 - this.bits) >> (32 - this.bits)}`) {
+				ConsoleDevice.outChar(char)
+			}
+			break
+		case PORTS.UINT:
+			for(const char of `${value >>> 0}`) {
+				ConsoleDevice.outChar(char)
+			}
+			break
+		case PORTS.BIN:
+			for(const char of ((value >>> 0) & this.mask).toString(2)) {
+				ConsoleDevice.outChar(char)
+			}
+			break
+		case PORTS.HEX:
+			for(const char of ((value >>> 0) & this.mask).toString(16)) {
 				ConsoleDevice.outChar(char)
 			}
 			break
@@ -1537,7 +1561,7 @@ case "LOD":
 		annotations.push({column: opcode.column, row: opcode.row, type: "error", text: `Expected 2 operands for instruction ${opcode.value}`})
 		unrecoverable = true
 	} else {
-		instr += assign(args[0], `this.getMemory((${arg(args[1])}) & ${MEMMASK})`)
+		instr += assign(args[0], `this.getMemory(${arg(args[1])})`)
 	}
 	break;
 case "STR":
@@ -1545,7 +1569,7 @@ case "STR":
 		annotations.push({column: opcode.column, row: opcode.row, type: "error", text: `Expected 2 operands for instruction ${opcode.value}`})
 		unrecoverable = true
 	} else {
-		instr += `this.setMemory((${arg(args[0])}) & ${MEMMASK}, ${arg(args[1])})`
+		instr += `this.setMemory(${arg(args[0])}, ${arg(args[1])})`
 	}
 	break;
 case "BGE": // BRANCH
@@ -1850,7 +1874,7 @@ case "DIV":
 		annotations.push({column: opcode.column, row: opcode.row, type: "error", text: `Expected 3 operands for instruction ${opcode.value}`})
 		unrecoverable = true
 	} else {
-		instr += assign(args[0], `${arg(args[2])} === 0 ? -1 : ((${arg(args[1])} >>> 0) / (${arg(args[2])} >>> 0) | 0)`)
+		instr += assign(args[0], `${arg(args[2])} === 0 ? -1 : Math.floor((${arg(args[1])} >>> 0) / (${arg(args[2])} >>> 0))`)
 	}
 	break;
 case "MOD":
@@ -1963,7 +1987,7 @@ case "LLOD":
 		annotations.push({column: opcode.column, row: opcode.row, type: "error", text: `Expected 3 operands for instruction ${opcode.value}`})
 		unrecoverable = true
 	} else {
-		instr += assign(args[0], `this.getMemory((${arg(args[1])} + ${arg(args[2])}) & ${MEMMASK})`)
+		instr += assign(args[0], `this.getMemory(${arg(args[1])} + ${arg(args[2])})`)
 	}
 	break;
 case "LSTR":
@@ -1971,7 +1995,7 @@ case "LSTR":
 		annotations.push({column: opcode.column, row: opcode.row, type: "error", text: `Expected 3 operands for instruction ${opcode.value}`})
 		unrecoverable = true
 	} else {
-		instr += `this.setMemory((${arg(args[0])} + ${arg(args[1])}) & ${MEMMASK}, ${arg(args[2])})`
+		instr += `this.setMemory(${arg(args[0])} + ${arg(args[1])}, ${arg(args[2])})`
 	}
 	break;
 case "SDIV":
@@ -2122,7 +2146,7 @@ case "UMLT":
 		annotations.push({column: opcode.column, row: opcode.row, type: "error", text: `Expected 3 operands for instruction ${opcode.value}`})
 		unrecoverable = true
 	} else {
-		instr += assign(args[0], `Number((BigInt(${arg(args[1])}) * BigInt(${arg(args[2])})) >>> ${BITS}n)`)
+		instr += assign(args[0], `Number((BigInt(${arg(args[1])}) * BigInt(${arg(args[2])})) >> ${BITS}n)`)
 	}
 	break;
 case "SUMLT":

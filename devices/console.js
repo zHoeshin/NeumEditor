@@ -670,18 +670,39 @@ window.Devices["ConsoleDevice"] = window["ConsoleDevice"] = function() {
 
 		getInputChar() {
 			if (input.value.length == 0) {
-				return () => {input.addEventListener('input', () => {
-					const char = input.value.codePointAt(0)
-					input.value = input.value.slice(1)
-					RuntimeManager.sendInput(char)
-				}, {once: true});}
+				const listener = (e) => {
+					if (e.key == "Enter") {
+						input.removeEventListener("keydown", listener)
+						const char = self.getInputChar()
+						if (typeof char == 'function') {
+							char()
+						} else {
+							RuntimeManager.sendInput(char)
+						}
+					}
+				}
+				return () => {input.addEventListener('keydown', listener)}
 			} else {
 				const char = input.value.codePointAt(0)
 				input.value = input.value.slice(1)
-				console.warn(char)
 				return char
 			}
-		}
+		},
+
+		getBeforeConfirm(f) {
+			const listener = (e) => {
+				if (e.key == "Enter") {
+					e.preventDefault()
+					const text = input.value
+					if (text == "") {
+						return
+					}
+					input.removeEventListener("keydown", listener)
+					RuntimeManager.sendInput(f(text))
+				}
+			}
+			return () => {input.addEventListener('keydown', listener)}
+		},
 	}
 
 	return self.init

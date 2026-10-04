@@ -341,8 +341,8 @@ canvas#consolebg {
 div#consoletext {
 	aspect-ratio: inherit;
 	font-size: inherit;
-	width: inherit;
-	height: inherit;
+	/*width: inherit;*/
+	/*height: inherit;*/
     position: absolute;
 	/*isolation: isolate;*/
 }
@@ -356,8 +356,8 @@ div#consoletextbg {
 
 div#consolefgwrapper{
 	aspect-ratio: inherit;
-	width: inherit;
-	height: inherit;
+	/*width: inherit;*/
+	/*height: inherit;*/
 	position: absolute;
 	inset: 0;
 	isolation: isolate;
@@ -375,8 +375,8 @@ pre#consoletext {
 	background-repeat: no-repeat;
 	background-size: 100% 100%;
 	background-clip: text;
-	width: inherit;
-	height: inherit;
+	/*width: inherit;*/
+	/*height: inherit;*/
     position: absolute;
 	/*mix-blend-mode: multiply;*/
 	margin: 0;
@@ -387,8 +387,8 @@ pre#consoletextbg {
 	background-color: #ffffff;
 	position: absolute;
 	color: transparent;
-	width: inherit;
-	height: inherit;
+	/*width: inherit;*/
+	/*height: inherit;*/
     position: absolute;
 	/*mix-blend-mode: multiply;*/
 	margin: 0;
