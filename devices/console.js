@@ -32,7 +32,7 @@ window.Devices["ConsoleDevice"] = window["ConsoleDevice"] = function() {
 	let currentStyle = ""
 
 	let width = 80
-	let height = 24
+	let height = 60//24
 
 	let x = 0
 	let y = 0

@@ -210,24 +210,58 @@ class URCLMachine {
 	}
 
 	pushMemory(value) {
-        // if (this.sp !== 0 && this.sp <= -1 ){ //this.memorysize){
-        //     console.error(`Stack overflow: ${this.sp} <= ${this.memorysize}}`);
-        //     this.sp = 0
-        //     return 0
-        // }
+        if (this.sp < 0){ //this.memorysize){
+        	const msg = `Stack overflow: ${this.sp} <= ${this.memorysize} @ ${this.pc}`
+            console.error(msg);
+            this.editor.getSession().setAnnotations([{row: this.pc2line[this.pc], column: 0, text: msg, type: "error"}])
+            this.sp = 0
+            return 0
+        }
         this.sp = this.sp - 1
         this.memory[this.sp & this.memorymask] = value;
 
         return 0
     }
     popMemory() {
-        // if (this.sp >= this.memorysize){
-        //     console.error(`Stack underflow: ${this.sp} >= ${this.memorysize}`);
-        //     this.sp = this.memorysize - 1
-        //     return 0
-        // }
+        if (this.sp >= this.memorysize){
+        	const msg = `Stack underflow: ${this.sp} >= ${this.memorysize} @ ${this.pc}`
+            console.error(msg);
+            this.editor.getSession().setAnnotations([{row: this.pc2line[this.pc], column: 0, text: msg, type: "error"}])
+            this.sp = this.memorysize - 1
+            return 0
+        }
         const value = this.memory[this.sp & this.memorymask];
         this.sp = this.sp + 1
+
+        return value;
+    }
+
+	pushPC(value) {
+        if (this.sp < 0){ //this.memorysize){
+        	const msg = `Stack overflow: ${this.sp} <= ${this.memorysize} @ ${this.pc}`
+            console.error(msg);
+            this.editor.getSession().setAnnotations([{row: this.pc2line[this.pc], column: 0, text: msg, type: "error"}])
+            this.sp = 0
+            return 0
+        }
+        // console.warn("in", value, "at", this.sp)
+        this.sp = this.sp - 1
+        this.memory[this.sp & this.memorymask] = value;
+
+        return 0
+    }
+    popPC() {
+        if (this.sp >= this.memorysize){
+        	const msg = `Stack underflow: ${this.sp} >= ${this.memorysize} @ ${this.pc}`
+            console.error(msg);
+            this.editor.getSession().setAnnotations([{row: this.pc2line[this.pc], column: 0, text: msg, type: "error"}])
+            this.sp = this.memorysize - 1
+            return 0
+        }
+        const value = this.memory[this.sp & this.memorymask];
+        this.sp = this.sp + 1
+
+        // console.error("out", value, "at", this.sp - 1)
 
         return value;
     }
@@ -1414,6 +1448,25 @@ const URCL = function(){
 						ops.push(port)
 
 						instructions.push([new Token("wrd", opcode, line[0].column, line[0].row, line[0].i), ops])
+					} else if (line[0].value.toLowerCase().startsWith("out") && line[0].value.toLowerCase().includes("%")) {
+						const pi = line[0].value.indexOf("%")
+						const opcode = line[0].value.slice(0, i)
+						const port = resolveDefinition(new Token("prt", line[0].value.slice(i), line[0].column + len(pi), line[0].row, line[0].i + len(pi)))
+
+						for (let p of pendingLabels) {
+							labels[p.value] = instructions.length
+						}
+						pendingLabels = []
+						const ops = [port]
+						for (let o of line.slice(1)) {
+							o = resolveDefinition(o)
+							if (o.type == "rel") {
+								o = new Token("num", o.value + instructions.length, o.column, o.row, o.i)
+							}
+							ops.push(o)
+						}
+
+						instructions.push([new Token("wrd", opcode, line[0].column, line[0].row, line[0].i), ops])
 					} else {
 						for (let p of pendingLabels) {
 							labels[p.value] = instructions.length
@@ -1451,7 +1504,7 @@ const URCL = function(){
 				return
 			}
 
-			let MASK = (2 ** BITS) - 1
+			let MASK = ((2 ** BITS) - 1) >>> 0
 
 			const LIM = [8, 16, 32].includes(BITS) ? "" : `& ${MASK}`
 
@@ -1485,23 +1538,25 @@ const URCL = function(){
 				case "str":
 					return argm.value.codePointAt(0)
 				}
+				annotations.push({row: line, column: 0, text: `Unknown value ${value.key}`, type: `error`})
+				unrecoverable = true
 				return `null`
 			}
 
 			function assign(dest, value) {
 				if (dest === undefined) {
-					annotations.push({row: line, column: 0, text: `Undefined assignment`, type: `error`})
+					annotations.push({row: value.row, column: 0, text: `Undefined assignment`, type: `error`})
 					return `null;`
 				}
 				switch (dest.type) {
 				case "imm":
 				case "port":
-					annotations.push({row: line, column: 0, text: `Cannot assign to an immediate`, type: `error`})
+					annotations.push({row: dest.row, column: 0, text: `Cannot assign to an immediate`, type: `error`})
 					break
 				case "reg":
-					/*if (dest.value == 0) {
+					if (dest.value == 0) {
 						return `${value};`
-					} else */if (dest.value >= 0) {
+					} else if (dest.value >= 0) {
 						// if (BITS == 8 || BITS == 16 || BITS == 32) {
 						// 	return `this.registers[${dest.value}] = ${s};`
 						// } else {
@@ -1518,6 +1573,7 @@ const URCL = function(){
 					annotations.push({row: dest.row, column: dest.column, text: `Cannot assign to a memory address directly`, type: `error`})
 					break
 				}
+				annotations.push({row: line, column: 0, text: `Cannot assign`, type: `error`})
 				return `null;`
 			}
 
@@ -1532,7 +1588,7 @@ const URCL = function(){
 	        let step = "let i = 1; switch(this.pc) {\n";
 	        let run = `let i = 0;
 	const end = performance.now() + ${max_duration};
-	while (performance.now() < end) for (let j = 0; j < ${burst_length}; j++) switch(this.pc) {\n`;
+	while (performance.now() < end) {const ipc = this.pc; for (let j = 0; j < ${burst_length}; j++) switch(this.pc) {\n`;
 	        for (let i = 0; i < instructions.length; i++) {
 	            const opcode = instructions[i][0]
 	            const args = instructions[i][1]
@@ -1745,7 +1801,7 @@ case "BOD": // BRANCH
 		annotations.push({column: opcode.column, row: opcode.row, type: "error", text: `Expected 2 operands for instruction ${opcode.value}`})
 		unrecoverable = true
 	} else {
-		instr += `if (${arg(args[1])} % 2 == 1) { this.pc = ${arg(args[0])}; break; }`
+		instr += `if (${arg(args[1])} & 1) { this.pc = ${arg(args[0])}; break; }`
 	}
 	break;
 case "BEV": // BRANCH
@@ -1753,7 +1809,7 @@ case "BEV": // BRANCH
 		annotations.push({column: opcode.column, row: opcode.row, type: "error", text: `Expected 2 operands for instruction ${opcode.value}`})
 		unrecoverable = true
 	} else {
-		instr += `if (${arg(args[1])} % 2 == 0) { this.pc = ${arg(args[0])}; break; }`
+		instr += `if (!(${arg(args[1])} & 1)) { this.pc = ${arg(args[0])}; break; }`
 	}
 	break;
 case "BLE": // BRANCH
@@ -1817,7 +1873,7 @@ case "CAL": // BRANCH
 		annotations.push({column: opcode.column, row: opcode.row, type: "error", text: `Expected 1 operands for instruction ${opcode.value}`})
 		unrecoverable = true
 	} else {
-		instr += `this.pushMemory(this.pc); this.pc = ${arg(args[0])}; break;`
+		instr += `this.pushPC(this.pc); this.pc = ${arg(args[0])}; break;`
 	}
 	break;
 case "RET": // BRANCH
@@ -1825,7 +1881,7 @@ case "RET": // BRANCH
 		annotations.push({column: opcode.column, row: opcode.row, type: "error", text: `Expected 0 operands for instruction ${opcode.value}`})
 		unrecoverable = true
 	} else {
-		instr += `this.pc = this.popMemory(); break;`
+		instr += `this.pc = this.popPC(); break;`
 	}
 	break;
 case "HLT":
@@ -1841,7 +1897,7 @@ case "CPY":
 		annotations.push({column: opcode.column, row: opcode.row, type: "error", text: `Expected 2 operands for instruction ${opcode.value}`})
 		unrecoverable = true
 	} else {
-		instr += `this.setMemory((${arg(args[0])}) & ${MEMMASK}, this.getMemory((${arg(args[1])}) & ${MEMMASK}))`
+		instr += `this.setMemory(${arg(args[0])}, this.getMemory(${arg(args[1])}))`
 	}
 	break;
 case "BRC": // BRANCH
@@ -1874,7 +1930,7 @@ case "DIV":
 		annotations.push({column: opcode.column, row: opcode.row, type: "error", text: `Expected 3 operands for instruction ${opcode.value}`})
 		unrecoverable = true
 	} else {
-		instr += assign(args[0], `${arg(args[2])} === 0 ? -1 : Math.floor((${arg(args[1])} >>> 0) / (${arg(args[2])} >>> 0))`)
+		instr += assign(args[0], `${arg(args[2])} === 0 ? ${MASK} : Math.floor((${arg(args[1])} >>> 0) / (${arg(args[2])} >>> 0))`)
 	}
 	break;
 case "MOD":
@@ -1883,7 +1939,7 @@ case "MOD":
 		unrecoverable = true
 	} else {
 		// instr += assign(args[0], `${arg(args[1])} % ${arg(args[2])}`)
-		instr += assign(args[0], `${arg(args[2])} === 0 ? -1 : (${arg(args[1])} % ${arg(args[2])})`)
+		instr += assign(args[0], `${arg(args[2])} === 0 ? ${MASK} : (${arg(args[1])} % ${arg(args[2])})`)
 	}
 	break;
 case "BSR": // BRANCH
@@ -1907,7 +1963,7 @@ case "SRS":
 		annotations.push({column: opcode.column, row: opcode.row, type: "error", text: `Expected 2 operands for instruction ${opcode.value}`})
 		unrecoverable = true
 	} else {
-		instr += assign(args[0], `${arg(args[1])} >> 1`)
+		instr += assign(args[0], `this.toSigned(${arg(args[1])}) >> 1`)
 	}
 	break;
 case "BSS":
@@ -1915,7 +1971,7 @@ case "BSS":
 		annotations.push({column: opcode.column, row: opcode.row, type: "error", text: `Expected 3 operands for instruction ${opcode.value}`})
 		unrecoverable = true
 	} else {
-		instr += assign(args[0], `${arg(args[1])} >> ${arg(args[2])}`)
+		instr += assign(args[0], `this.toSigned(${arg(args[1])}) >> ${arg(args[2])}`)
 	}
 	break;
 case "SETE":
@@ -1923,7 +1979,7 @@ case "SETE":
 		annotations.push({column: opcode.column, row: opcode.row, type: "error", text: `Expected 3 operands for instruction ${opcode.value}`})
 		unrecoverable = true
 	} else {
-		instr += assign(args[0], `-(${arg(args[1])} == ${arg(args[2])})`)
+		instr += assign(args[0], `-(${arg(args[1])} === ${arg(args[2])})`)
 	}
 	break;
 case "SETNE":
@@ -1931,7 +1987,7 @@ case "SETNE":
 		annotations.push({column: opcode.column, row: opcode.row, type: "error", text: `Expected 3 operands for instruction ${opcode.value}`})
 		unrecoverable = true
 	} else {
-		instr += assign(args[0], `-(${arg(args[1])} != ${arg(args[2])})`)
+		instr += assign(args[0], `-(${arg(args[1])} !== ${arg(args[2])})`)
 	}
 	break;
 case "SETG":
@@ -2003,7 +2059,7 @@ case "SDIV":
 		annotations.push({column: opcode.column, row: opcode.row, type: "error", text: `Expected 3 operands for instruction ${opcode.value}`})
 		unrecoverable = true
 	} else {
-		instr += assign(args[0], `${arg(args[2])} === 0 ? -1 : ((this.toSigned(${arg(args[1])}) / this.toSigned(${arg(args[2])})) | 0)`)
+		instr += assign(args[0], `${arg(args[2])} === 0 ? ${MASK} : ((this.toSigned(${arg(args[1])}) / this.toSigned(${arg(args[2])})) | 0)`)
 	}
 	break;
 case "SBRL": // BRANCH
@@ -2179,8 +2235,8 @@ default:
 
 
 	        step += `}\nreturn [${0}, 1, null];\n`;
-	        run += `default: return [${1}, i, null]`;
-	        run += `}\nreturn [${0}, i, null]`;
+	        run += `default: {console.error("pc set to", this.pc, "from", ipc); return [${3}, i, null]}`;
+	        run += `}}\nreturn [${0}, i, null]`;
 
 			this.editor.getSession().setAnnotations(annotations)
 

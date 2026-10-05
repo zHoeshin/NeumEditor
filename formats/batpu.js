@@ -24,6 +24,8 @@ class BatPUMachine {
 		this.numberSigned = false
 	}
 
+	dispose() {}
+
 	markCurrentLine(line) {
 		this.editor.getSession().$decorations = []
 		this.editor.getSession().addGutterDecoration(line, "current-executed-line-marker")
@@ -851,9 +853,9 @@ const BatPU = function(){
 				}
 				switch (dest.type) {
 				case "reg":
-					/*if (dest.value == 0) {
+					if (dest.value == 0) {
 						return `${value};`
-					} else */if (dest.value >= 0) {
+					} else if (dest.value >= 0) {
 						// if (BITS == 8 || BITS == 16 || BITS == 32) {
 						// 	return `this.registers[${dest.value}] = ${s};`
 						// } else {
