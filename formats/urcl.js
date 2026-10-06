@@ -747,7 +747,7 @@ const URCL = function(){
 				if ("+-0123456789_".includes(c)) {
 					let numstr = ""
 					let char = raw[i]
-					while (i < L && "+-0123456789abcdefABCDEF_bx".includes(char)) {
+					while (i < L && "+-0123456789abcdefABCDEF_bxXoO".includes(char)) {
 						numstr += char
 						i += 1
 						column += 1
@@ -891,7 +891,7 @@ const URCL = function(){
 							let scolumn = column
 							let srow = row
 							let si = i
-							while (i < L && "+-0123456789abcdefABCDEF_bx".includes(char1)) {
+							while (i < L && "+-0123456789abcdefABCDEF_bxXoO".includes(char1)) {
 								numstr += char1
 								i += 1
 								column += 1
@@ -1511,7 +1511,7 @@ const URCL = function(){
 			function arg(argm) {
 				switch (argm.type) {
 				case "num":
-					return `(${argm.value} ${LIM})`
+					return `(${(argm.value & MASK) >>> 0})`
 					break
 				case "reg":
 					if (argm.value == 0) {
@@ -1525,15 +1525,16 @@ const URCL = function(){
 					}
 					break
 				case "mem":
-					return `(${argm.value + data.length} ${LIM})`
+					return `(${((argm.value + data.length) & MASK) >>> 0})`
 					break
 				case "prt":
 					return `(${PORTS[argm.value.toUpperCase()]} /* ${argm.value} */ ${LIM})`
 				case "lbl": {
 					if (!(argm.value in labels)) {
 						annotations.push({row: argm.row, column: argm.column, text: `Unknown label ${arg.value}`, type: `error`})
+					    break
 					}
-					return `(${labels[argm.value]} ${LIM})`;
+					return `(${(labels[argm.value] & MASK) >>> 0})`;
 					}
 				case "str":
 					return argm.value.codePointAt(0)
@@ -1549,8 +1550,8 @@ const URCL = function(){
 					return `null;`
 				}
 				switch (dest.type) {
-				case "imm":
-				case "port":
+				case "num":
+				case "prt":
 					annotations.push({row: dest.row, column: 0, text: `Cannot assign to an immediate`, type: `error`})
 					break
 				case "reg":
@@ -1741,6 +1742,7 @@ case "NOT":
 	}
 	break;
 case "XNOR":
+case "NXOR":
 	if (args.length != 3) {
 		annotations.push({column: opcode.column, row: opcode.row, type: "error", text: `Expected 3 operands for instruction ${opcode.value}`})
 		unrecoverable = true
@@ -1947,7 +1949,7 @@ case "BSR": // BRANCH
 		annotations.push({column: opcode.column, row: opcode.row, type: "error", text: `Expected 3 operands for instruction ${opcode.value}`})
 		unrecoverable = true
 	} else {
-		instr += assign(args[0], `${arg(args[1])} >>> ${arg(args[2])}`)
+		instr += assign(args[0], `${arg(args[1])} >>> Math.min(31, ${arg(args[2])})`)
 	}
 	break;
 case "BSL": // BRANCH
@@ -1955,7 +1957,7 @@ case "BSL": // BRANCH
 		annotations.push({column: opcode.column, row: opcode.row, type: "error", text: `Expected 3 operands for instruction ${opcode.value}`})
 		unrecoverable = true
 	} else {
-		instr += assign(args[0], `${arg(args[1])} << ${arg(args[2])}`)
+		instr += assign(args[0], `${arg(args[1])} << Math.min(31, ${arg(args[2])})`)
 	}
 	break;
 case "SRS":
@@ -1971,7 +1973,7 @@ case "BSS":
 		annotations.push({column: opcode.column, row: opcode.row, type: "error", text: `Expected 3 operands for instruction ${opcode.value}`})
 		unrecoverable = true
 	} else {
-		instr += assign(args[0], `this.toSigned(${arg(args[1])}) >> ${arg(args[2])}`)
+		instr += assign(args[0], `this.toSigned(${arg(args[1])}) >> Math.min(31, ${arg(args[2])})`)
 	}
 	break;
 case "SETE":
