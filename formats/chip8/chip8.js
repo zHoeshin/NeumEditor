@@ -58,7 +58,7 @@ class Chip8Interpreter {
 
 	step(callback) {
 		if (this.next(callback)) {
-			return [2, c, null]
+			return [2, 1, null]
 		}
 		ScreenDevice.putImageData(new ImageData(new Uint8ClampedArray(this.frame.buffer), 64))
 
@@ -126,14 +126,17 @@ class Chip8Interpreter {
 			}
 			case 1: {
 				this.v[addr] |= b
+				this.v[0xf] = 0
 				break
 			}
 			case 2: {
 				this.v[addr] &= b
+				this.v[0xf] = 0
 				break
 			}
 			case 3: {
 				this.v[addr] ^= b
+				this.v[0xf] = 0
 				break
 			}
 			case 4: {
@@ -248,13 +251,15 @@ class Chip8Interpreter {
 				this.ram[(this.i + 2) & 0xfff] = n % 10
 				break
 			case 0x55:
-				for(let idx = 0; idx < 16; idx++) {
-					this.ram[(this.i + idx) & 0xfff] = this.v[idx]
+				for(let idx = 0; idx < addr; idx++) {
+					this.ram[this.i & 0xfff] = this.v[idx]
+					this.i++
 				}
 				break
 			case 0x65:
-				for(let idx = 0; idx < 16; idx++) {
-					this.v[idx] = this.ram[(this.i + idx) & 0xfff]
+				for(let idx = 0; idx < addr; idx++) {
+					this.v[idx] = this.ram[this.i & 0xfff]
+					this.i++
 				}
 				break
 			}
@@ -263,6 +268,7 @@ class Chip8Interpreter {
 		}
 
 		this.pc &= 0xfff
+		this.i &= 0xfff
 	}
 
 	burst(duration, callback) {
@@ -345,7 +351,7 @@ const Octo = function(){
 		compile() {
 			const c = new OctoCompiler(this.editor.getValue())
 			c.go()
-			const rom = new Uint8Array(0xfff)
+			const rom = new Uint8Array(0xfff + 1)
 			console.log(c, c.rom)
 			for(let i = 0; i < c.rom.length && i + 0x200 <= 0xfff; i++) {
 				rom[i + 0x200] = c.rom[i]
