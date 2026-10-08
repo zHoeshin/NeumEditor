@@ -204,6 +204,10 @@ window.Devices["ScreenDevice"] = window["ScreenDevice"] = function () {
 			}
 		},
 
+		putImageData(data) {
+			ctx.putImageData(data, 0, 0)
+		},
+
 		clearBuffer() {
 			var c = (clearColor & 0xff) << 24 | (clearColor & 0xff00) << 8 | (clearColor & 0xff0000) >>> 8 | clearColor >>> 24
 			var iter = new Uint32Array(rawimagedata.data.buffer)

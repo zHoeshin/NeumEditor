@@ -527,8 +527,8 @@ window["RuntimeManager"] = function() {
 	        if (e - starttime >= 1000) {
 	        	if (e - starttime >= 10000) {
 	        		console.error(`One frame ran for ${e - starttime}, stopping`)
-	        		running = false
-	        		fresh = true
+	        		self.pause()
+	        		return
 	        	}
 
 	        	console.log(`${count * 1000 / (e - starttime)}(raw ${count}) in the last second`)

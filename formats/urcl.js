@@ -69,7 +69,14 @@ const PORTS = {
 	"KEY": 67,
 	"CURCODEPOINT": 68,
 	"GAMEPAD": 80,
-};
+	"GAMEPAD_INFO": 81,
+}
+
+const PORTNAMES = Object.fromEntries(
+	Object.entries(PORTS).map(([NAME, ID]) => [ID, NAME])
+)
+
+const DEBUG_TRACE = false
 
 function mp2(n) {
 	return 2 ** Math.ceil(Math.log2(n))
@@ -121,6 +128,17 @@ class URCLMachine {
 		this.pc2line = instructionlines
 		this.editor = editor
 		this.markedline = 0
+		this._log = []
+	}
+
+	log(line, sep, value) {
+		this._log.push(`${line}:${sep}${value}`)
+	}
+
+	getLog() {
+		const s = this._log.join("\n")
+		console.log(s)
+		return s
 	}
 
 	async initDrive(drive) {
@@ -210,26 +228,26 @@ class URCLMachine {
 	}
 
 	pushMemory(value) {
-        if (this.sp < 0){ //this.memorysize){
-        	const msg = `Stack overflow: ${this.sp} <= ${this.memorysize} @ ${this.pc}`
-            console.error(msg);
-            this.editor.getSession().setAnnotations([{row: this.pc2line[this.pc], column: 0, text: msg, type: "error"}])
-            this.sp = 0
-            return 0
-        }
+        // if (this.sp < 0){ //this.memorysize){
+        // 	const msg = `Stack overflow: ${this.sp} <= ${this.memorysize} @ ${this.pc}`
+        //     console.error(msg);
+        //     this.editor.getSession().setAnnotations([{row: this.pc2line[this.pc], column: 0, text: msg, type: "error"}])
+        //     this.sp = 0
+        //     return 0
+        // }
         this.sp = this.sp - 1
         this.memory[this.sp & this.memorymask] = value;
 
         return 0
     }
     popMemory() {
-        if (this.sp >= this.memorysize){
-        	const msg = `Stack underflow: ${this.sp} >= ${this.memorysize} @ ${this.pc}`
-            console.error(msg);
-            this.editor.getSession().setAnnotations([{row: this.pc2line[this.pc], column: 0, text: msg, type: "error"}])
-            this.sp = this.memorysize - 1
-            return 0
-        }
+        // if (this.sp >= this.memorysize){
+        // 	const msg = `Stack underflow: ${this.sp} >= ${this.memorysize} @ ${this.pc}`
+        //     console.error(msg);
+        //     this.editor.getSession().setAnnotations([{row: this.pc2line[this.pc], column: 0, text: msg, type: "error"}])
+        //     this.sp = this.memorysize - 1
+        //     return 0
+        // }
         const value = this.memory[this.sp & this.memorymask];
         this.sp = this.sp + 1
 
@@ -237,13 +255,13 @@ class URCLMachine {
     }
 
 	pushPC(value) {
-        if (this.sp < 0){ //this.memorysize){
-        	const msg = `Stack overflow: ${this.sp} <= ${this.memorysize} @ ${this.pc}`
-            console.error(msg);
-            this.editor.getSession().setAnnotations([{row: this.pc2line[this.pc], column: 0, text: msg, type: "error"}])
-            this.sp = 0
-            return 0
-        }
+        // if (this.sp < 0){ //this.memorysize){
+        // 	const msg = `Stack overflow: ${this.sp} <= ${this.memorysize} @ ${this.pc}`
+        //     console.error(msg);
+        //     this.editor.getSession().setAnnotations([{row: this.pc2line[this.pc], column: 0, text: msg, type: "error"}])
+        //     this.sp = 0
+        //     return 0
+        // }
         // console.warn("in", value, "at", this.sp)
         this.sp = this.sp - 1
         this.memory[this.sp & this.memorymask] = value;
@@ -251,13 +269,13 @@ class URCLMachine {
         return 0
     }
     popPC() {
-        if (this.sp >= this.memorysize){
-        	const msg = `Stack underflow: ${this.sp} >= ${this.memorysize} @ ${this.pc}`
-            console.error(msg);
-            this.editor.getSession().setAnnotations([{row: this.pc2line[this.pc], column: 0, text: msg, type: "error"}])
-            this.sp = this.memorysize - 1
-            return 0
-        }
+        // if (this.sp >= this.memorysize){
+        // 	const msg = `Stack underflow: ${this.sp} >= ${this.memorysize} @ ${this.pc}`
+        //     console.error(msg);
+        //     this.editor.getSession().setAnnotations([{row: this.pc2line[this.pc], column: 0, text: msg, type: "error"}])
+        //     this.sp = this.memorysize - 1
+        //     return 0
+        // }
         const value = this.memory[this.sp & this.memorymask];
         this.sp = this.sp + 1
 
@@ -271,6 +289,9 @@ class URCLMachine {
         //     console.error(`Heap overflow on store: ${addr} >= ${this.memorysize}`);
         //     return 0
         // }
+        if (DEBUG_TRACE) {
+        	this.log(this.pc2line[this.pc - 1], "", `[${addr}]=${value}`)
+        }
         this.memory[addr & this.memorymask] = value;
     
         return 0
@@ -321,6 +342,9 @@ class URCLMachine {
 		case PORTS.GAMEPAD:
 			return KeyboardDevice.getPad()
 			break
+		case PORTS.GAMEPAD_INFO:
+			return 1
+			break
 		case PORTS.TEXT:
 			return ConsoleDevice.getInputChar()
 		case PORTS.NUMB:
@@ -352,6 +376,9 @@ class URCLMachine {
 	}
 
 	writePort(port, value) {
+		if (DEBUG_TRACE) {
+			this.log(this.pc2line[this.pc-1], `%${PORTNAMES[port] ?? port}=`, value)
+		}
 		switch (port) {
 		case PORTS.X:
 			this.x = value
@@ -1132,7 +1159,7 @@ const URCL = function(){
 
 			let BITS = 8
 
-			const META = []
+			const META = {"SHIFT_OVERFLOW": "mask"}
 
 			while (j < lines.length) {
 				line = lines[j]
@@ -1204,7 +1231,7 @@ const URCL = function(){
 							}
 							META["SCREEN_COLOR"] = p.value
 							break }
-						case "DRIVE":
+						case "DRIVE": {
 							if (line.length == 1) {
 								annotations.push({column: line[0].column + 1, row: line[0].row + 1, type: "error", text: `Expected drive name`})
 								break
@@ -1219,6 +1246,23 @@ const URCL = function(){
 							}
 							META["DRIVE"] = p.value
 							break
+						}
+						case "SHIFT_OVERFLOW":{
+							if (line.length == 1) {
+								annotations.push({column: line[0].column + 1, row: line[0].row + 1, type: "error", text: `Expected shift overflow definition`})
+								break
+							}
+							if (line.length != 2) {
+								annotations.push({column: line[0].column + 1, row: line[0].row + 1, type: "error", text: `Expected just shift overflow definition, ignoring extra parameters`})
+							}
+							let p = line[1]
+							if (p.type != "wrd" || !["mask", "clamp"].includes(p.value.toLowerCase())) {
+								annotations.push({column: line[1].column + 1, row: line[1].row + 1, type: "error", text: `Expected shift overflow to be either "mask" or "clamp`})
+								break
+							}
+							META["SHIFT_OVERFLOW"] = p.value.toLowerCase()
+							break
+						}
 					}
 					j += 1
 					continue
@@ -1430,7 +1474,7 @@ const URCL = function(){
 					} else if (line[0].value.toLowerCase().startsWith("in") && line[0].value.toLowerCase().includes("%")) {
 						const pi = line[0].value.indexOf("%")
 						const opcode = line[0].value.slice(0, i)
-						const port = resolveDefinition(new Token("prt", line[0].value.slice(i), line[0].column + len(pi), line[0].row, line[0].i + len(pi)))
+						const port = resolveDefinition(new Token("prt", line[0].value.slice(i), line[0].column + pi.length, line[0].row, line[0].i + pi.length))
 
 						for (let p of pendingLabels) {
 							labels[p.value] = instructions.length
@@ -1451,7 +1495,7 @@ const URCL = function(){
 					} else if (line[0].value.toLowerCase().startsWith("out") && line[0].value.toLowerCase().includes("%")) {
 						const pi = line[0].value.indexOf("%")
 						const opcode = line[0].value.slice(0, i)
-						const port = resolveDefinition(new Token("prt", line[0].value.slice(i), line[0].column + len(pi), line[0].row, line[0].i + len(pi)))
+						const port = resolveDefinition(new Token("prt", line[0].value.slice(i), line[0].column + pi.length, line[0].row, line[0].i + pi.length))
 
 						for (let p of pendingLabels) {
 							labels[p.value] = instructions.length
@@ -1505,6 +1549,8 @@ const URCL = function(){
 			}
 
 			let MASK = ((2 ** BITS) - 1) >>> 0
+			let SIGNMASK = 2 ** (BITS - 1)
+			let SHIFTMASK = 2 ** (Math.ceil(Math.log2(BITS)) | 0) - 1
 
 			const LIM = [8, 16, 32].includes(BITS) ? "" : `& ${MASK}`
 
@@ -1563,11 +1609,11 @@ const URCL = function(){
 						// } else {
 						// 	return `this.registers[${dest.value}] = (${s}) & ${MASK};`
 						// }
-						return `this.registers[${dest.value + 1}] = (${value}) ${LIM};`
+						return `this.registers[${dest.value + 1}] = (${value}) ${LIM}; /* trace this.log(${dest.row + 1}, "=", ${value}) trace */;`
 					} else if (dest.value == -1) {
-						return `this.pc = (${value}) ${LIM};`
+						return `this.pc = (${value}) ${LIM}; /* trace this.log(${dest.row + 1}, "->", ${value}) trace */;`
 					} else if(dest.value == -2) {
-						return `this.sp = (${value}) ${LIM};`
+						return `this.sp = (${value}) ${LIM}; /* trace this.log(${dest.row + 1}, "_", ${value}) trace */;`
 					}
 					break
 				case "mem":
@@ -1634,7 +1680,7 @@ case "BGE": // BRANCH
 		annotations.push({column: opcode.column, row: opcode.row, type: "error", text: `Expected 3 operands for instruction ${opcode.value}`})
 		unrecoverable = true
 	} else {
-		instr += `if (${arg(args[1])} >= ${arg(args[2])}) { this.pc = ${arg(args[0])}; break; }`
+		instr += `if (${arg(args[1])} >= ${arg(args[2])}) { this.pc = ${arg(args[0])}; /* trace this.log(${opcode.row + 1}, "->", this.pc) trace */; break; }`
 	}
 	break;
 case "NOR":
@@ -1658,7 +1704,7 @@ case "JMP": // BRANCH
 		annotations.push({column: opcode.column, row: opcode.row, type: "error", text: `Expected 1 operands for instruction ${opcode.value}`})
 		unrecoverable = true
 	} else {
-		instr += `this.pc = ${arg(args[0])}; break; `
+		instr += `this.pc = ${arg(args[0])}; /* trace this.log(${opcode.row + 1}, "->", this.pc) trace */; break; `
 	}
 	break;
 case "MOV":
@@ -1771,7 +1817,7 @@ case "BRL": // BRANCH
 		annotations.push({column: opcode.column, row: opcode.row, type: "error", text: `Expected 3 operands for instruction ${opcode.value}`})
 		unrecoverable = true
 	} else {
-		instr += `if (${arg(args[1])} < ${arg(args[2])}) { this.pc = ${arg(args[0])}; break; }`
+		instr += `if (${arg(args[1])} < ${arg(args[2])}) { this.pc = ${arg(args[0])}; /* trace this.log(${opcode.row + 1}, "->", this.pc) trace */; break; }`
 	}
 	break;
 case "BRG": // BRANCH
@@ -1779,7 +1825,7 @@ case "BRG": // BRANCH
 		annotations.push({column: opcode.column, row: opcode.row, type: "error", text: `Expected 3 operands for instruction ${opcode.value}`})
 		unrecoverable = true
 	} else {
-		instr += `if (${arg(args[1])} > ${arg(args[2])}) { this.pc = ${arg(args[0])}; break; }`
+		instr += `if (${arg(args[1])} > ${arg(args[2])}) { this.pc = ${arg(args[0])}; /* trace this.log(${opcode.row + 1}, "->", this.pc) trace */; break; }`
 	}
 	break;
 case "BRE": // BRANCH
@@ -1787,7 +1833,7 @@ case "BRE": // BRANCH
 		annotations.push({column: opcode.column, row: opcode.row, type: "error", text: `Expected 3 operands for instruction ${opcode.value}`})
 		unrecoverable = true
 	} else {
-		instr += `if (${arg(args[1])} == ${arg(args[2])}) { this.pc = ${arg(args[0])}; break; }`
+		instr += `if (${arg(args[1])} == ${arg(args[2])}) { this.pc = ${arg(args[0])}; /* trace this.log(${opcode.row + 1}, "->", this.pc) trace */; break; }`
 	}
 	break;
 case "BNE": // BRANCH
@@ -1795,7 +1841,7 @@ case "BNE": // BRANCH
 		annotations.push({column: opcode.column, row: opcode.row, type: "error", text: `Expected 3 operands for instruction ${opcode.value}`})
 		unrecoverable = true
 	} else {
-		instr += `if (${arg(args[1])} != ${arg(args[2])}) { this.pc = ${arg(args[0])}; break; }`
+		instr += `if (${arg(args[1])} != ${arg(args[2])}) { this.pc = ${arg(args[0])}; /* trace this.log(${opcode.row + 1}, "->", this.pc) trace */; break; }`
 	}
 	break;
 case "BOD": // BRANCH
@@ -1803,7 +1849,7 @@ case "BOD": // BRANCH
 		annotations.push({column: opcode.column, row: opcode.row, type: "error", text: `Expected 2 operands for instruction ${opcode.value}`})
 		unrecoverable = true
 	} else {
-		instr += `if (${arg(args[1])} & 1) { this.pc = ${arg(args[0])}; break; }`
+		instr += `if (${arg(args[1])} & 1) { this.pc = ${arg(args[0])}; /* trace this.log(${opcode.row + 1}, "->", this.pc) trace */; break; }`
 	}
 	break;
 case "BEV": // BRANCH
@@ -1811,7 +1857,7 @@ case "BEV": // BRANCH
 		annotations.push({column: opcode.column, row: opcode.row, type: "error", text: `Expected 2 operands for instruction ${opcode.value}`})
 		unrecoverable = true
 	} else {
-		instr += `if (!(${arg(args[1])} & 1)) { this.pc = ${arg(args[0])}; break; }`
+		instr += `if (!(${arg(args[1])} & 1)) { this.pc = ${arg(args[0])}; /* trace this.log(${opcode.row + 1}, "->", this.pc) trace */; break; }`
 	}
 	break;
 case "BLE": // BRANCH
@@ -1819,7 +1865,7 @@ case "BLE": // BRANCH
 		annotations.push({column: opcode.column, row: opcode.row, type: "error", text: `Expected 3 operands for instruction ${opcode.value}`})
 		unrecoverable = true
 	} else {
-		instr += `if (${arg(args[1])} <= ${arg(args[2])}) { this.pc = ${arg(args[0])}; break; }`
+		instr += `if (${arg(args[1])} <= ${arg(args[2])}) { this.pc = ${arg(args[0])}; /* trace this.log(${opcode.row + 1}, "->", this.pc) trace */; break; }`
 	}
 	break;
 case "BRZ": // BRANCH
@@ -1827,7 +1873,7 @@ case "BRZ": // BRANCH
 		annotations.push({column: opcode.column, row: opcode.row, type: "error", text: `Expected 2 operands for instruction ${opcode.value}`})
 		unrecoverable = true
 	} else {
-		instr += `if (${arg(args[1])}  == 0) { this.pc = ${arg(args[0])}; break; }`
+		instr += `if (${arg(args[1])}  == 0) { this.pc = ${arg(args[0])}; /* trace this.log(${opcode.row + 1}, "->", this.pc) trace */; break; }`
 	}
 	break;
 case "BNZ": // BRANCH
@@ -1835,7 +1881,7 @@ case "BNZ": // BRANCH
 		annotations.push({column: opcode.column, row: opcode.row, type: "error", text: `Expected 2 operands for instruction ${opcode.value}`})
 		unrecoverable = true
 	} else {
-		instr += `if (${arg(args[1])} != 0) { this.pc = ${arg(args[0])}; break; }`
+		instr += `if (${arg(args[1])} != 0) { this.pc = ${arg(args[0])}; /* trace this.log(${opcode.row + 1}, "->", this.pc) trace */; break; }`
 	}
 	break;
 case "BRN": // BRANCH
@@ -1843,7 +1889,7 @@ case "BRN": // BRANCH
 		annotations.push({column: opcode.column, row: opcode.row, type: "error", text: `Expected 2 operands for instruction ${opcode.value}`})
 		unrecoverable = true
 	} else {
-		instr += `if (this.toSigned(${arg(args[1])}) < 0) { this.pc = ${arg(args[0])}; break; }`
+		instr += `if (this.toSigned(${arg(args[1])}) < 0) { this.pc = ${arg(args[0])}; /* trace this.log(${opcode.row + 1}, "->", this.pc) trace */; break; }`
 	}
 	break;
 case "BRP": // BRANCH
@@ -1851,7 +1897,7 @@ case "BRP": // BRANCH
 		annotations.push({column: opcode.column, row: opcode.row, type: "error", text: `Expected 2 operands for instruction ${opcode.value}`})
 		unrecoverable = true
 	} else {
-		instr += `if (this.toSigned(${arg(args[1])}) >= 0) { this.pc = ${arg(args[0])}; break; }`
+		instr += `if (this.toSigned(${arg(args[1])}) >= 0) { this.pc = ${arg(args[0])}; /* trace this.log(${opcode.row + 1}, "->", this.pc) trace */; break; }`
 	}
 	break;
 case "PSH":
@@ -1875,7 +1921,7 @@ case "CAL": // BRANCH
 		annotations.push({column: opcode.column, row: opcode.row, type: "error", text: `Expected 1 operands for instruction ${opcode.value}`})
 		unrecoverable = true
 	} else {
-		instr += `this.pushPC(this.pc); this.pc = ${arg(args[0])}; break;`
+		instr += `this.pushPC(this.pc); this.pc = ${arg(args[0])}; /* trace this.log(${opcode.row + 1}, "+>", this.pc) trace */; break;`
 	}
 	break;
 case "RET": // BRANCH
@@ -1883,7 +1929,7 @@ case "RET": // BRANCH
 		annotations.push({column: opcode.column, row: opcode.row, type: "error", text: `Expected 0 operands for instruction ${opcode.value}`})
 		unrecoverable = true
 	} else {
-		instr += `this.pc = this.popPC(); break;`
+		instr += `this.pc = this.popPC(); /* trace this.log(${opcode.row + 1}, "<-", this.pc) trace */; break;`
 	}
 	break;
 case "HLT":
@@ -1907,7 +1953,7 @@ case "BRC": // BRANCH
 		annotations.push({column: opcode.column, row: opcode.row, type: "error", text: `Expected 3 operands for instruction ${opcode.value}`})
 		unrecoverable = true
 	} else {
-		instr += `if (${arg(args[1])} + ${arg(args[2])} > ${MASK}) { this.pc = ${arg(args[0])}; break; }`
+		instr += `if (${arg(args[1])} + ${arg(args[2])} > ${MASK}) { this.pc = ${arg(args[0])}; /* trace this.log(${opcode.row + 1}, "->", this.pc) trace */; break; }`
 	}
 	break;
 case "BNC": // BRANCH
@@ -1915,7 +1961,7 @@ case "BNC": // BRANCH
 		annotations.push({column: opcode.column, row: opcode.row, type: "error", text: `Expected 3 operands for instruction ${opcode.value}`})
 		unrecoverable = true
 	} else {
-		instr += `if (${arg(args[1])} + ${arg(args[2])} <= ${MASK}) { this.pc = ${arg(args[0])}; break; }`
+		instr += `if (${arg(args[1])} + ${arg(args[2])} <= ${MASK}) { this.pc = ${arg(args[0])}; /* trace this.log(${opcode.row + 1}, "->", this.pc) trace */; break; }`
 	}
 	break;
 case "MLT":
@@ -1944,20 +1990,28 @@ case "MOD":
 		instr += assign(args[0], `${arg(args[2])} === 0 ? ${MASK} : (${arg(args[1])} % ${arg(args[2])})`)
 	}
 	break;
-case "BSR": // BRANCH
+case "BSR":
 	if (args.length != 3) {
 		annotations.push({column: opcode.column, row: opcode.row, type: "error", text: `Expected 3 operands for instruction ${opcode.value}`})
 		unrecoverable = true
 	} else {
-		instr += assign(args[0], `${arg(args[1])} >>> Math.min(31, ${arg(args[2])})`)
+		if (META.SHIFT_OVERFLOW == "mask") {
+			instr += assign(args[0], `${arg(args[1])} >>> (${arg(args[2])} & ${SHIFTMASK})`)
+		} else {
+			instr += `{const s = ${arg(args[2])}; ${assign(args[0], `(s > this.bits) ? (0) : (${arg(args[1])} >>> (s))`)}}`
+		}
 	}
 	break;
-case "BSL": // BRANCH
+case "BSL":
 	if (args.length != 3) {
 		annotations.push({column: opcode.column, row: opcode.row, type: "error", text: `Expected 3 operands for instruction ${opcode.value}`})
 		unrecoverable = true
 	} else {
-		instr += assign(args[0], `${arg(args[1])} << Math.min(31, ${arg(args[2])})`)
+		if (META.SHIFT_OVERFLOW == "mask") {
+			instr += assign(args[0], `${arg(args[1])} << (${arg(args[2])} & ${SHIFTMASK})`)
+		} else {
+			instr += `{const s = ${arg(args[2])}; ${assign(args[0], `(s > this.bits) ? (0) : (${arg(args[1])} << (s))`)}}`
+		}
 	}
 	break;
 case "SRS":
@@ -1973,7 +2027,11 @@ case "BSS":
 		annotations.push({column: opcode.column, row: opcode.row, type: "error", text: `Expected 3 operands for instruction ${opcode.value}`})
 		unrecoverable = true
 	} else {
-		instr += assign(args[0], `this.toSigned(${arg(args[1])}) >> Math.min(31, ${arg(args[2])})`)
+		if (META.SHIFT_OVERFLOW == "mask") {
+			instr += assign(args[0], `${arg(args[1])} >> (${arg(args[2])} & ${SHIFTMASK})`)
+		} else {
+			instr += `{const s = ${arg(args[2])}; ${assign(args[0], `(s > this.bits) ? (${arg(args[1])} & ${SIGNMASK}) : (${arg(args[1])} >> (s))`)}}`
+		}
 	}
 	break;
 case "SETE":
@@ -2069,7 +2127,7 @@ case "SBRL": // BRANCH
 		annotations.push({column: opcode.column, row: opcode.row, type: "error", text: `Expected 3 operands for instruction ${opcode.value}`})
 		unrecoverable = true
 	} else {
-		instr += `if (this.toSigned(${arg(args[1])}) < this.toSigned(${arg(args[2])})) { this.pc = ${arg(args[0])}; break; }`
+		instr += `if (this.toSigned(${arg(args[1])}) < this.toSigned(${arg(args[2])})) { this.pc = ${arg(args[0])}; /* trace this.log(${opcode.row + 1}, "->", this.pc) trace */; break; }`
 	}
 	break;
 case "SBRG": // BRANCH
@@ -2077,7 +2135,7 @@ case "SBRG": // BRANCH
 		annotations.push({column: opcode.column, row: opcode.row, type: "error", text: `Expected 3 operands for instruction ${opcode.value}`})
 		unrecoverable = true
 	} else {
-		instr += `if (this.toSigned(${arg(args[1])}) > this.toSigned(${arg(args[2])})) { this.pc = ${arg(args[0])}; break; }`
+		instr += `if (this.toSigned(${arg(args[1])}) > this.toSigned(${arg(args[2])})) { this.pc = ${arg(args[0])}; /* trace this.log(${opcode.row + 1}, "->", this.pc) trace */; break; }`
 	}
 	break;
 case "SBLE": // BRANCH
@@ -2085,7 +2143,7 @@ case "SBLE": // BRANCH
 		annotations.push({column: opcode.column, row: opcode.row, type: "error", text: `Expected 3 operands for instruction ${opcode.value}`})
 		unrecoverable = true
 	} else {
-		instr += `if (this.toSigned(${arg(args[1])}) <= this.toSigned(${arg(args[2])})) { this.pc = ${arg(args[0])}; break; }`
+		instr += `if (this.toSigned(${arg(args[1])}) <= this.toSigned(${arg(args[2])})) { this.pc = ${arg(args[0])}; /* trace this.log(${opcode.row + 1}, "->", this.pc) trace */; break; }`
 	}
 	break;
 case "SBGE": // BRANCH
@@ -2093,7 +2151,7 @@ case "SBGE": // BRANCH
 		annotations.push({column: opcode.column, row: opcode.row, type: "error", text: `Expected 3 operands for instruction ${opcode.value}`})
 		unrecoverable = true
 	} else {
-		instr += `if (this.toSigned(${arg(args[1])}) >= this.toSigned(${arg(args[2])})) { this.pc = ${arg(args[0])}; break; }`
+		instr += `if (this.toSigned(${arg(args[1])}) >= this.toSigned(${arg(args[2])})) { this.pc = ${arg(args[0])}; /* trace this.log(${opcode.row + 1}, "->", this.pc) trace */; break; }`
 	}
 	break;
 case "SSETL":
@@ -2164,7 +2222,7 @@ case "OUT": // IO
 		annotations.push({column: opcode.column, row: opcode.row, type: "error", text: `Expected 2 operands for instruction ${opcode.value}`})
 		unrecoverable = true
 	} else {
-		instr += `this.writePort(${arg(args[0])}, ${arg(args[1])})`
+		instr += `this.writePort(${arg(args[0])}, ${arg(args[1])});`
 	}
 	break;
 case "ASSERT":
@@ -2237,7 +2295,7 @@ default:
 
 
 	        step += `}\nreturn [${0}, 1, null];\n`;
-	        run += `default: {console.error("pc set to", this.pc, "from", ipc); return [${3}, i, null]}`;
+	        run += `default: {console.error("pc set to", this.pc, "from", ipc); return [${1}, i, null]}`;
 	        run += `}}\nreturn [${0}, i, null]`;
 
 			this.editor.getSession().setAnnotations(annotations)
@@ -2299,6 +2357,11 @@ default:
 	        }
 
 	        const DRIVE = await DriveManager.getDriveHandle(META["DRIVE"])
+
+	        if (DEBUG_TRACE) {
+	        	step = step.replace(/\/\* trace/g, "").replace(/trace \*\//g, "")
+	        	run = run.replace(/\/\* trace/g, "").replace(/trace \*\//g, "")
+	        }
 
 	        return await (new URCLMachine(DATA, max_duration, callback_return_value, step, run, INSTRUCTIONLINES, DWSTART, this.editor, {
 	        	"BITS": DEFINITIONS["def BITS"].value,
