@@ -49,7 +49,9 @@ class Chip8Interpreter {
 		this.speed = spd > 0 ? spd / 60 : -1
 	}
 
-	dispose() {}
+	dispose() {
+		removeEventListener("keydown", keyCallback)
+	}
 
 	markCurrentLine(){}
 	getLine(){}
@@ -237,7 +239,7 @@ class Chip8Interpreter {
 				this.i += this.v[addr]
 				break
 			case 0x29:
-				// TODO: sprites
+				this.i = this.v[addr] * 5;
 				break
 			case 0x33:
 				const n = this.v[addr]
@@ -349,6 +351,30 @@ const Octo = function(){
 				rom[i + 0x200] = c.rom[i]
 			}
 
+			const fontset =
+			[
+				0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
+				0x20, 0x60, 0x20, 0x20, 0x70, // 1
+				0xF0, 0x10, 0xF0, 0x80, 0xF0, // 2
+				0xF0, 0x10, 0xF0, 0x10, 0xF0, // 3
+				0x90, 0x90, 0xF0, 0x10, 0x10, // 4
+				0xF0, 0x80, 0xF0, 0x10, 0xF0, // 5
+				0xF0, 0x80, 0xF0, 0x90, 0xF0, // 6
+				0xF0, 0x10, 0x20, 0x40, 0x40, // 7
+				0xF0, 0x90, 0xF0, 0x90, 0xF0, // 8
+				0xF0, 0x90, 0xF0, 0x10, 0xF0, // 9
+				0xF0, 0x90, 0xF0, 0x90, 0x90, // A
+				0xE0, 0x90, 0xE0, 0x90, 0xE0, // B
+				0xF0, 0x80, 0x80, 0x80, 0xF0, // C
+				0xE0, 0x90, 0x90, 0x90, 0xE0, // D
+				0xF0, 0x80, 0xF0, 0x80, 0xF0, // E
+				0xF0, 0x80, 0xF0, 0x80, 0x80  // F
+			];
+
+			for(let i = 0; i < fontset.length; i++) {
+				rom[i] = fontset[i]
+			}
+
         	document.querySelector("input#screenwidth").value = 64
         	document.querySelector("input#screenwidth").dispatchEvent(new Event('change', { bubbles: true }))
         	document.querySelector("input#screenheight").value = 32
@@ -356,7 +382,7 @@ const Octo = function(){
         	document.querySelector("select#screencolormode").value = "RGBA8888"
         	document.querySelector("select#screencolormode").dispatchEvent(new Event('change', { bubbles: true }))
 
-			return new Chip8Interpreter(rom, c.constants.__SPEED ?? -1)
+			return new Chip8Interpreter(rom, c.constants.__SPEED ?? 720)
 		}
 	}
 

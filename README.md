@@ -30,3 +30,5 @@ The emulator includes a 80x24 character terminal that supports many ANSI sequenc
 
 ## Support for BatPU2
 [BatPU2](https://www.youtube.com/watch?v=osFa7nwHHz4&list=PL5LiOvrbVo8nPTtdXAdSmDWzu85zzdgRT) is an educational CPU created by [mattbatwings](https://www.youtube.com/mattbatwings)
+
+## Support for Chip8
