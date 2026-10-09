@@ -76,7 +76,7 @@ const PORTNAMES = Object.fromEntries(
 	Object.entries(PORTS).map(([NAME, ID]) => [ID, NAME])
 )
 
-const DEBUG_TRACE = false
+const DEBUG_TRACE = true
 
 function mp2(n) {
 	return 2 ** Math.ceil(Math.log2(n))
@@ -1680,7 +1680,7 @@ case "BGE": // BRANCH
 		annotations.push({column: opcode.column, row: opcode.row, type: "error", text: `Expected 3 operands for instruction ${opcode.value}`})
 		unrecoverable = true
 	} else {
-		instr += `if (${arg(args[1])} >= ${arg(args[2])}) { this.pc = ${arg(args[0])}; /* trace this.log(${opcode.row + 1}, "->", this.pc) trace */; break; }`
+		instr += `if (${arg(args[1])} >= ${arg(args[2])}) { this.pc = ${arg(args[0])}; /* trace this.log(${opcode.row + 1}, "->", this.pc) trace */; break; } else { /* trace this.log(${opcode.row + 1}, "->", "x") trace */ }`
 	}
 	break;
 case "NOR":
@@ -1817,7 +1817,7 @@ case "BRL": // BRANCH
 		annotations.push({column: opcode.column, row: opcode.row, type: "error", text: `Expected 3 operands for instruction ${opcode.value}`})
 		unrecoverable = true
 	} else {
-		instr += `if (${arg(args[1])} < ${arg(args[2])}) { this.pc = ${arg(args[0])}; /* trace this.log(${opcode.row + 1}, "->", this.pc) trace */; break; }`
+		instr += `if (${arg(args[1])} < ${arg(args[2])}) { this.pc = ${arg(args[0])}; /* trace this.log(${opcode.row + 1}, "->", this.pc) trace */; break; } else { /* trace this.log(${opcode.row + 1}, "->", "x") trace */ }`
 	}
 	break;
 case "BRG": // BRANCH
@@ -1825,7 +1825,7 @@ case "BRG": // BRANCH
 		annotations.push({column: opcode.column, row: opcode.row, type: "error", text: `Expected 3 operands for instruction ${opcode.value}`})
 		unrecoverable = true
 	} else {
-		instr += `if (${arg(args[1])} > ${arg(args[2])}) { this.pc = ${arg(args[0])}; /* trace this.log(${opcode.row + 1}, "->", this.pc) trace */; break; }`
+		instr += `if (${arg(args[1])} > ${arg(args[2])}) { this.pc = ${arg(args[0])}; /* trace this.log(${opcode.row + 1}, "->", this.pc) trace */; break; } else { /* trace this.log(${opcode.row + 1}, "->", "x") trace */ }`
 	}
 	break;
 case "BRE": // BRANCH
@@ -1833,7 +1833,7 @@ case "BRE": // BRANCH
 		annotations.push({column: opcode.column, row: opcode.row, type: "error", text: `Expected 3 operands for instruction ${opcode.value}`})
 		unrecoverable = true
 	} else {
-		instr += `if (${arg(args[1])} == ${arg(args[2])}) { this.pc = ${arg(args[0])}; /* trace this.log(${opcode.row + 1}, "->", this.pc) trace */; break; }`
+		instr += `if (${arg(args[1])} == ${arg(args[2])}) { this.pc = ${arg(args[0])}; /* trace this.log(${opcode.row + 1}, "->", this.pc) trace */; break; } else { /* trace this.log(${opcode.row + 1}, "->", "x") trace */ }`
 	}
 	break;
 case "BNE": // BRANCH
@@ -1841,7 +1841,7 @@ case "BNE": // BRANCH
 		annotations.push({column: opcode.column, row: opcode.row, type: "error", text: `Expected 3 operands for instruction ${opcode.value}`})
 		unrecoverable = true
 	} else {
-		instr += `if (${arg(args[1])} != ${arg(args[2])}) { this.pc = ${arg(args[0])}; /* trace this.log(${opcode.row + 1}, "->", this.pc) trace */; break; }`
+		instr += `if (${arg(args[1])} != ${arg(args[2])}) { this.pc = ${arg(args[0])}; /* trace this.log(${opcode.row + 1}, "->", this.pc) trace */; break; } else { /* trace this.log(${opcode.row + 1}, "->", "x") trace */ }`
 	}
 	break;
 case "BOD": // BRANCH
@@ -1849,7 +1849,7 @@ case "BOD": // BRANCH
 		annotations.push({column: opcode.column, row: opcode.row, type: "error", text: `Expected 2 operands for instruction ${opcode.value}`})
 		unrecoverable = true
 	} else {
-		instr += `if (${arg(args[1])} & 1) { this.pc = ${arg(args[0])}; /* trace this.log(${opcode.row + 1}, "->", this.pc) trace */; break; }`
+		instr += `if (${arg(args[1])} & 1) { this.pc = ${arg(args[0])}; /* trace this.log(${opcode.row + 1}, "->", this.pc) trace */; break; } else { /* trace this.log(${opcode.row + 1}, "->", "x") trace */ }`
 	}
 	break;
 case "BEV": // BRANCH
@@ -1857,7 +1857,7 @@ case "BEV": // BRANCH
 		annotations.push({column: opcode.column, row: opcode.row, type: "error", text: `Expected 2 operands for instruction ${opcode.value}`})
 		unrecoverable = true
 	} else {
-		instr += `if (!(${arg(args[1])} & 1)) { this.pc = ${arg(args[0])}; /* trace this.log(${opcode.row + 1}, "->", this.pc) trace */; break; }`
+		instr += `if (!(${arg(args[1])} & 1)) { this.pc = ${arg(args[0])}; /* trace this.log(${opcode.row + 1}, "->", this.pc) trace */; break; } else { /* trace this.log(${opcode.row + 1}, "->", "x") trace */ }`
 	}
 	break;
 case "BLE": // BRANCH
@@ -1865,7 +1865,7 @@ case "BLE": // BRANCH
 		annotations.push({column: opcode.column, row: opcode.row, type: "error", text: `Expected 3 operands for instruction ${opcode.value}`})
 		unrecoverable = true
 	} else {
-		instr += `if (${arg(args[1])} <= ${arg(args[2])}) { this.pc = ${arg(args[0])}; /* trace this.log(${opcode.row + 1}, "->", this.pc) trace */; break; }`
+		instr += `if (${arg(args[1])} <= ${arg(args[2])}) { this.pc = ${arg(args[0])}; /* trace this.log(${opcode.row + 1}, "->", this.pc) trace */; break; } else { /* trace this.log(${opcode.row + 1}, "->", "x") trace */ }`
 	}
 	break;
 case "BRZ": // BRANCH
@@ -1873,7 +1873,7 @@ case "BRZ": // BRANCH
 		annotations.push({column: opcode.column, row: opcode.row, type: "error", text: `Expected 2 operands for instruction ${opcode.value}`})
 		unrecoverable = true
 	} else {
-		instr += `if (${arg(args[1])}  == 0) { this.pc = ${arg(args[0])}; /* trace this.log(${opcode.row + 1}, "->", this.pc) trace */; break; }`
+		instr += `if (${arg(args[1])}  == 0) { this.pc = ${arg(args[0])}; /* trace this.log(${opcode.row + 1}, "->", this.pc) trace */; break; } else { /* trace this.log(${opcode.row + 1}, "->", "x") trace */ }`
 	}
 	break;
 case "BNZ": // BRANCH
@@ -1881,7 +1881,7 @@ case "BNZ": // BRANCH
 		annotations.push({column: opcode.column, row: opcode.row, type: "error", text: `Expected 2 operands for instruction ${opcode.value}`})
 		unrecoverable = true
 	} else {
-		instr += `if (${arg(args[1])} != 0) { this.pc = ${arg(args[0])}; /* trace this.log(${opcode.row + 1}, "->", this.pc) trace */; break; }`
+		instr += `if (${arg(args[1])} != 0) { this.pc = ${arg(args[0])}; /* trace this.log(${opcode.row + 1}, "->", this.pc) trace */; break; } else { /* trace this.log(${opcode.row + 1}, "->", "x") trace */ }`
 	}
 	break;
 case "BRN": // BRANCH
@@ -1889,7 +1889,7 @@ case "BRN": // BRANCH
 		annotations.push({column: opcode.column, row: opcode.row, type: "error", text: `Expected 2 operands for instruction ${opcode.value}`})
 		unrecoverable = true
 	} else {
-		instr += `if (this.toSigned(${arg(args[1])}) < 0) { this.pc = ${arg(args[0])}; /* trace this.log(${opcode.row + 1}, "->", this.pc) trace */; break; }`
+		instr += `if (this.toSigned(${arg(args[1])}) < 0) { this.pc = ${arg(args[0])}; /* trace this.log(${opcode.row + 1}, "->", this.pc) trace */; break; } else { /* trace this.log(${opcode.row + 1}, "->", "x") trace */ }`
 	}
 	break;
 case "BRP": // BRANCH
@@ -1897,7 +1897,7 @@ case "BRP": // BRANCH
 		annotations.push({column: opcode.column, row: opcode.row, type: "error", text: `Expected 2 operands for instruction ${opcode.value}`})
 		unrecoverable = true
 	} else {
-		instr += `if (this.toSigned(${arg(args[1])}) >= 0) { this.pc = ${arg(args[0])}; /* trace this.log(${opcode.row + 1}, "->", this.pc) trace */; break; }`
+		instr += `if (this.toSigned(${arg(args[1])}) >= 0) { this.pc = ${arg(args[0])}; /* trace this.log(${opcode.row + 1}, "->", this.pc) trace */; break; } else { /* trace this.log(${opcode.row + 1}, "->", "x") trace */ }`
 	}
 	break;
 case "PSH":
@@ -1905,7 +1905,7 @@ case "PSH":
 		annotations.push({column: opcode.column, row: opcode.row, type: "error", text: `Expected 1 operands for instruction ${opcode.value}`})
 		unrecoverable = true
 	} else {
-		instr += `this.pushMemory(${arg(args[0])})`
+		instr += `this.pushMemory(${arg(args[0])}); /* trace this.log(${opcode.row + 1}, "[+]=", ${arg(args[0])}) trace */`
 	}
 	break;
 case "POP":
@@ -1913,7 +1913,7 @@ case "POP":
 		annotations.push({column: opcode.column, row: opcode.row, type: "error", text: `Expected 1 operands for instruction ${opcode.value}`})
 		unrecoverable = true
 	} else {
-		instr += assign(args[0], `this.popMemory()`)
+		instr += `${assign(args[0], `this.popMemory()`)}; /* trace this.log(${opcode.row + 1}, "[-]", "") trace */`
 	}
 	break;
 case "CAL": // BRANCH
@@ -1953,7 +1953,7 @@ case "BRC": // BRANCH
 		annotations.push({column: opcode.column, row: opcode.row, type: "error", text: `Expected 3 operands for instruction ${opcode.value}`})
 		unrecoverable = true
 	} else {
-		instr += `if (${arg(args[1])} + ${arg(args[2])} > ${MASK}) { this.pc = ${arg(args[0])}; /* trace this.log(${opcode.row + 1}, "->", this.pc) trace */; break; }`
+		instr += `if (${arg(args[1])} + ${arg(args[2])} > ${MASK}) { this.pc = ${arg(args[0])}; /* trace this.log(${opcode.row + 1}, "->", this.pc) trace */; break; } else { /* trace this.log(${opcode.row + 1}, "->", "x") trace */ }`
 	}
 	break;
 case "BNC": // BRANCH
@@ -1961,7 +1961,7 @@ case "BNC": // BRANCH
 		annotations.push({column: opcode.column, row: opcode.row, type: "error", text: `Expected 3 operands for instruction ${opcode.value}`})
 		unrecoverable = true
 	} else {
-		instr += `if (${arg(args[1])} + ${arg(args[2])} <= ${MASK}) { this.pc = ${arg(args[0])}; /* trace this.log(${opcode.row + 1}, "->", this.pc) trace */; break; }`
+		instr += `if (${arg(args[1])} + ${arg(args[2])} <= ${MASK}) { this.pc = ${arg(args[0])}; /* trace this.log(${opcode.row + 1}, "->", this.pc) trace */; break; } else { /* trace this.log(${opcode.row + 1}, "->", "x") trace */ }`
 	}
 	break;
 case "MLT":

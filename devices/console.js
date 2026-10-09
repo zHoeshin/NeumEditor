@@ -299,7 +299,7 @@ window.Devices["ConsoleDevice"] = window["ConsoleDevice"] = function() {
 							self.moveCursor(-c, 0, true)
 						}
 						break
-					
+
 					case "E": // next line
 						{
 							const c = codes[0] ?? 1
@@ -328,7 +328,7 @@ window.Devices["ConsoleDevice"] = window["ConsoleDevice"] = function() {
 									styleBuffer[i] = currentStyle
 									bgBuffer[i] = currentBg
 									fgBuffer[i] = currentFg
-								}	
+								}
 							}
 							if (c % 2 == 0) {
 								for(let i = y * width + x; i < (y + 1) * width - 1; i++) {
@@ -340,7 +340,7 @@ window.Devices["ConsoleDevice"] = window["ConsoleDevice"] = function() {
 									bgBuffer[(y + 1) * width] = currentBg
 									fgBuffer[(y + 1) * width] = currentFg
 								}
-							} 
+							}
 						}
 						break
 					case "s":
@@ -450,9 +450,9 @@ window.Devices["ConsoleDevice"] = window["ConsoleDevice"] = function() {
 											][color]
 										} else if (color < 232) {
 											color -= 16
-											let r = Math.floor(color / 36)
-											let g = Math.floor(color / 6) % 6
-											let b = color % 6
+											const r = Math.floor(color / 36)
+											const g = Math.floor(color / 6) % 6
+											const b = color % 6
 											let finalcolor = 0xff
 											finalcolor = (finalcolor << 8) + (b == 0 ? 0 : (b * 40 + 55))
 											finalcolor = (finalcolor << 8) + (g == 0 ? 0 : (g * 40 + 55))
@@ -460,6 +460,7 @@ window.Devices["ConsoleDevice"] = window["ConsoleDevice"] = function() {
 											color = finalcolor
 										} else {
 											color = (color - 232) * 10 + 8
+											color = (0xff << 24) | (color << 16) | (color << 8) | (color)
 										}
 									}
 									currentBg = color
@@ -496,8 +497,8 @@ window.Devices["ConsoleDevice"] = window["ConsoleDevice"] = function() {
 						for (const c of ansi) {
 							self.outRawChar(c)
 						}
-						break
 						needsSwap = true
+						break
 					}
 
 					handlingAnsi = false
