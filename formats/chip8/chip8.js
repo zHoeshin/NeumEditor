@@ -33,6 +33,17 @@ const keyCallback = (e) => {
 	}
 }
 
+const colors = [
+	// -top -bottom
+	[0, 0, 0],
+	// -top +bottom
+	[170, 170, 170],
+	// +top -bottom
+	[255, 255, 255],
+	// +top +bottom
+	[85, 85, 85],
+]
+
 class Chip8Interpreter {
 	constructor(rom, spd) {
 		this.ram = rom
@@ -43,13 +54,28 @@ class Chip8Interpreter {
 		this.sp = 0
 		this.delay = 0
 		this.sound = 0
-		this.buffer = new Uint32Array(128 * 64)
-		this.frame = new Uint32Array(128 * 64)
-		this.frame.fill(0xff000000)
+		this.frame1 = new Uint8Array(128 * 64)
+		this.frame2 = new Uint8Array(128 * 64)
+		this.frame1.fill(0)
+		this.frame2.fill(0)
 		this.speed = spd > 0 ? spd / 60 : -1
 		this.frametop = true
 		this.framebottom = false
 		this.hires = false
+
+		return this
+	}
+
+	appllyQuirks(consts) {
+		this.quirkShifts = consts.__Q_SHIFT ?? false
+		this.quirkLoadStore = consts.__Q_LOADSTORE ?? false
+		this.quirkVFOrder = consts.__Q_VFORDER ?? false
+		this.quirkClip = consts.__Q_CLIP ?? false
+		this.quirkJumps = consts.__Q_JUMPS ?? false
+		this.quirkVBlank = consts.__Q_VBlank ?? false
+		this.quirkLogic = consts.__Q_LOGIC ?? false
+
+		return this
 	}
 
 	dispose() {
@@ -59,28 +85,43 @@ class Chip8Interpreter {
 	markCurrentLine(){}
 	getLine(){}
 
+
+
+	updateScreen() {
+		const data = new Uint8ClampedArray(128 * 64 * 4)
+		const img = new ImageData(data, 128)
+		for (let i = 0; i < 128 * 64; i++) {
+			const c = colors[this.frame1[i] * 2 + this.frame2[i]]
+			data[i * 4    ] = c[0]
+			data[i * 4 + 1] = c[1]
+			data[i * 4 + 2] = c[2]
+			data[i * 4 + 3] = 255
+		}
+		ScreenDevice.putImageData(img)
+	}
+
 	drawSprite(x, y, addr, rows) {
 		x = (x << 24) >> 24
 		y = (y << 24) >> 24
 		if (this.hires) {
 			for(let row = 0; row < rows; row += 1) {
-				let spr = this.ram[(this.i + row) & 0xffff]
+				let spr = this.ram[(addr + row) & 0xffff]
 				for(let column = 0; column < 8; column += 1) {
 					const px = x + column
 					const py = y + row
 					if (px >= 0 && px < 128 && py >= 0 && py < 64 && (spr & 0b10000000)) {
 						const pos = (py << 7) | px
-						if ((this.frame[pos] & 0xff777777) && this.frametop) {
+						if (this.frame1[pos] && this.frametop) {
 							this.v[0xf] = 1
 						}
-						if ((this.frame[pos] & 0xff888888) && this.framebottom) {
+						if (this.frame2[pos] && this.framebottom) {
 							this.v[0xf] = 1
 						}
 						if (this.frametop) {
-							this.frame[pos] ^= 0x00ffffff
+							this.frame1[pos] ^= 1
 						}
 						if (this.framebottom) {
-							this.frame[pos] ^= 0x00888888
+							this.frame2[pos] ^= 1
 						}
 					}
 					spr = (spr << 1) & 0xff
@@ -88,29 +129,29 @@ class Chip8Interpreter {
 			}
 		} else {
 			for(let row = 0; row < rows; row += 1) {
-				let spr = this.ram[(this.i + row) & 0xffff]
+				let spr = this.ram[(addr + row) & 0xffff]
 				for(let column = 0; column < 8; column += 1) {
 					const px = (x + column) * 2
 					const py = (y + row) * 2
 					if (px >= 0 && px < 128 && py >= 0 && py < 64 && (spr & 0b10000000)) {
 						const pos = (py << 7) | px
-						if ((this.frame[pos] & 0xff777777) && this.frametop) {
+						if (this.frame1[pos] && this.frametop) {
 							this.v[0xf] = 1
 						}
-						if ((this.frame[pos] & 0xff888888) && this.framebottom) {
+						if (this.frame2[pos] && this.framebottom) {
 							this.v[0xf] = 1
 						}
 						if (this.frametop) {
-							this.frame[pos] ^= 0x00ffffff
-							if (x < 127) this.frame[pos + 1] ^= 0x00ffffff
-							if (y < 63) this.frame[pos + 128] ^= 0x00ffffff
-							if (x < 127 && x < 63) this.frame[pos + 129] ^= 0x00ffffff
+							this.frame1[pos] ^= 1
+							if (x < 127) this.frame1[pos + 1] ^= 1
+							if (y < 63) this.frame1[pos + 128] ^= 1
+							if (x < 127 && x < 63) this.frame1[pos + 129] ^= 1
 						}
 						if (this.framebottom) {
-							this.frame[pos] ^= 0x00888888
-							if (x < 127) this.frame[pos + 1] ^= 0x00888888
-							if (y < 63) this.frame[pos + 128] ^= 0x00888888
-							if (x < 127 && x < 63) this.frame[pos + 129] ^= 0x00888888
+							this.frame2[pos] ^= 1
+							if (x < 127) this.frame2[pos + 1] ^= 1
+							if (y < 63) this.frame2[pos + 128] ^= 1
+							if (x < 127 && x < 63) this.frame2[pos + 129] ^= 1
 						}
 					}
 					spr = (spr << 1) & 0xff
@@ -123,7 +164,7 @@ class Chip8Interpreter {
 		if (this.next(callback)) {
 			return [2, 1, null]
 		}
-		ScreenDevice.putImageData(new ImageData(new Uint8ClampedArray(this.frame.buffer), 128))
+		this.updateScreen()
 
 		return [0, 1, null]
 	}
@@ -141,20 +182,37 @@ class Chip8Interpreter {
 		case 0:
 			if (h == 0 && ((l >> 4) == 0xc)) {
 				const shift = (l & 0xf) * (this.hires ? 1 : 2)
-				this.frame.copyWithin(shift * 128, 0, 128 * (64 - shift))
-				this.frame.fill(0xff000000, 0, shift * 128)
+				if (this.frametop) {
+					this.frame1.copyWithin(shift * 128, 0, 128 * (64 - shift))
+					this.frame1.fill(0, 0, shift * 128)
+				}
+				if (this.framebottom) {
+					this.frame2.copyWithin(shift * 128, 0, 128 * (64 - shift))
+					this.frame2.fill(0, 0, shift * 128)
+				}
 				break
 			}
 			if (h == 0 && ((l >> 4) == 0xd)) {
 				const shift = (l & 0xf) * (this.hires ? 1 : 2)
-				this.frame.copyWithin(0, shift * 128)
-				this.frame.fill(0xff000000, 128 * (64 - shift))
+				if (this.frametop) {
+					this.frame1.copyWithin(0, shift * 128)
+					this.frame1.fill(0, 128 * (64 - shift))
+				}
+				if (this.framebottom) {
+					this.frame2.copyWithin(0, shift * 128)
+					this.frame2.fill(0, 128 * (64 - shift))
+				}
 				break
 			}
 			switch(instr) {
 				case 0x00E0: {
-					this.frame.fill(0xff000000)
-					ScreenDevice.putImageData(new ImageData(new Uint8ClampedArray(this.frame.buffer), 128))
+					if (this.frametop) {
+						this.frame1.fill(0)
+					}
+					if (this.framebottom) {
+						this.frame2.fill(0)
+					}
+					this.updateScreen()
 					break
 				}
 				case 0x00EE: {
@@ -164,17 +222,33 @@ class Chip8Interpreter {
 				}
 				case 0x00fb: {
 					const shift = this.hires ? 4 : 8
-					for(let i = 0; i < 64; i += 1) {
-						this.frame.copyWithin(i * 128 + shift, i * 128, i * 128 + 128 - shift)
-						this.frame.fill(0xff000000, i * 128, i * 128 + shift)
+					if (this.frametop) {
+						for(let i = 0; i < 64; i += 1) {
+							this.frame1.copyWithin(i * 128 + shift, i * 128, i * 128 + 128 - shift)
+							this.frame1.fill(0, i * 128, i * 128 + shift)
+						}
+					}
+					if (this.framebottom) {
+						for(let i = 0; i < 64; i += 1) {
+							this.frame2.copyWithin(i * 128 + shift, i * 128, i * 128 + 128 - shift)
+							this.frame2.fill(0, i * 128, i * 128 + shift)
+						}
 					}
 					break
 				}
 				case 0x00fc: {
 					const shift = this.hires ? 4 : 8
-					for(let i = 0; i < 64; i += 1) {
-						this.frame.copyWithin(i * 128, i * 128 + shift, i * 128 + 128)
-						this.frame.fill(0xff000000, i * 128 - shift, i * 128)
+					if (this.frametop) {
+						for(let i = 0; i < 64; i += 1) {
+							this.frame1.copyWithin(i * 128, i * 128 + shift, i * 128 + 128)
+							this.frame1.fill(0, Math.max(0, i * 128 - shift), i * 128)
+						}
+					}
+					if (this.framebottom) {
+						for(let i = 0; i < 64; i += 1) {
+							this.frame2.copyWithin(i * 128, i * 128 + shift, i * 128 + 128)
+							this.frame2.fill(0, Math.max(0, i * 128 - shift), i * 128)
+						}
 					}
 					break
 				}
@@ -203,11 +277,17 @@ class Chip8Interpreter {
 		case 3:
 			if (this.v[h & 0xf] == l) {
 				this.pc += 2
+				if (this.ram[this.pc] == 0xf0 && this.ram[this.pc + 1] == 0x00) {
+					this.pc += 2
+				}
 			}
 			break;
 		case 4:
 			if (this.v[h & 0xf] != l) {
 				this.pc += 2
+				if (this.ram[this.pc] == 0xf0 && this.ram[this.pc + 1] == 0x00) {
+					this.pc += 2
+				}
 			}
 			break;
 		case 5:
@@ -215,19 +295,22 @@ class Chip8Interpreter {
 			case 0:
 				if (this.v[h & 0xf] == this.v[l >> 4]) {
 					this.pc += 2
+					if (this.ram[this.pc] == 0xf0 && this.ram[this.pc + 1] == 0x00) {
+						this.pc += 2
+					}
 				}
 				break
 			case 2: {
 				const x = h & 0xf
 				const y = l >> 4
-				if (x >= y) {
+				if (x <= y) {
 					for(let idx = x; idx <= y; idx++) {
 						this.ram[this.i & 0xffff] = this.v[idx]
 						this.i++
 					}
 				} else {
 					for(let idx = y; idx <= x; idx++) {
-						this.ram[this.i & 0xffff] = this.v[idx]
+						this.ram[this.i & 0xffff] = this.v[y - idx + 1]
 						this.i++
 					}
 				}
@@ -236,14 +319,14 @@ class Chip8Interpreter {
 			case 3: {
 				const x = h & 0xf
 				const y = l >> 4
-				if (x >= y) {
+				if (x <= y) {
 					for(let idx = x; idx <= y; idx++) {
 						this.v[idx] = this.ram[this.i & 0xffff]
 						this.i++
 					}
 				} else {
 					for(let idx = y; idx <= x; idx++) {
-						this.v[idx] = this.ram[this.i & 0xffff]
+						this.v[y - idx + 1] = this.ram[this.i & 0xffff]
 						this.i++
 					}
 				}
@@ -266,48 +349,78 @@ class Chip8Interpreter {
 				break
 			}
 			case 1: {
-				this.v[addr] |= b
-				this.v[0xf] = 0
+				const v = this.v[addr] |= b
+				if (this.quirkLogic) {
+					this.v[0xf] = 0
+				}
+				if (this.quirkVFOrder) {
+					this.v[addr] = v
+				}
 				break
 			}
 			case 2: {
-				this.v[addr] &= b
-				this.v[0xf] = 0
+				const v = this.v[addr] &= b
+				if (this.quirkLogic) {
+					this.v[0xf] = 0
+				}
+				if (this.quirkVFOrder) {
+					this.v[addr] = v
+				}
 				break
 			}
 			case 3: {
-				this.v[addr] ^= b
-				this.v[0xf] = 0
+				const v = this.v[addr] ^= b
+				if (this.quirkLogic) {
+					this.v[0xf] = 0
+				}
+				if (this.quirkVFOrder) {
+					this.v[addr] = v
+				}
 				break
 			}
 			case 4: {
 				const a = this.v[addr]
-				this.v[addr] += b
+				const v = this.v[addr] += b
 				this.v[0xF] = a + b > 0xff
+				if (this.quirkVFOrder) {
+					this.v[addr] = v
+				}
 				break
 			}
 			case 5: {
 				const a = this.v[addr]
-				this.v[addr] -= b
+				const v = this.v[addr] -= b
 				this.v[0xF] = a >= b
+				if (this.quirkVFOrder) {
+					this.v[addr] = v
+				}
 				break
 			}
 			case 6: {
-				const a = this.v[addr]
-				this.v[addr] >>>= 1
+				const a = this.v[this.quirkShifts ? addr : l >> 4]
+				const v = this.v[this.quirkShifts ? addr : l >> 4] >>>= 1
 				this.v[0xF] = a & 1
+				if (this.quirkVFOrder) {
+					this.v[this.quirkShifts ? addr : l >> 4] = v
+				}
 				break
 			}
 			case 7: {
 				const a = this.v[addr]
-				this.v[addr] = b - a
+				const v = this.v[addr] = b - a
 				this.v[0xF] = a <= b
+				if (this.quirkVFOrder) {
+					this.v[addr] = v
+				}
 				break
 			}
 			case 0xe: {
-				const a = this.v[addr]
-				this.v[addr] <<= 1
+				const a = this.v[this.quirkShifts ? addr : l >> 4]
+				const v = this.v[this.quirkShifts ? addr : l >> 4] <<= 1
 				this.v[0xF] = a >> 7
+				if (this.quirkVFOrder) {
+					this.v[this.quirkShifts ? addr : l >> 4] = v
+				}
 				break
 			}
 			}
@@ -316,76 +429,177 @@ class Chip8Interpreter {
 		case 9:
 			if (this.v[h & 0xf] != this.v[l >> 4]) {
 				this.pc += 2
+				if (this.ram[this.pc] == 0xf0 && this.ram[this.pc + 1] == 0x00) {
+					this.pc += 2
+				}
 			}
 			break;
 		case 0xa:
 			this.i = instr & 0x0fff
 			break;
 		case 0xb:
-			this.pc = (this.v[0] + (instr & 0xffff))
+			if (this.quirkJumps) {
+				this.pc = (this.v[(instr & 0xfff) >> 8] + (instr & 0xfff))
+			} else {
+				this.pc = (this.v[0] + (instr & 0xfff))
+			}
 			break;
 		case 0xc:
 			this.v[h & 0xf] = ((Math.random() * 256) | 0) & l
 			break;
 		case 0xd: {
 			if ((l & 0xf) == 0) {
-				if (this.hires || true) {
+				if (this.hires) {
 					const x = this.v[h & 0xf] << 24 >> 24
 					const y = this.v[l >> 4] << 24 >> 24
 					this.v[0xf] = 0
 
-					for(let row = 0; row < 16; row += 1) {
-						let spr = this.ram[(this.i + row * 2) & 0xffff]
-						for(let column = 0; column < 8; column += 1) {
-							const px = x + column
-							const py = y + row
-							if (px >= 0 && px < 128 && py >= 0 && py < 64 && (spr & 0b10000000)) {
-								const pos = (py << 7) | px
-								if ((this.frame[pos] & 0xff777777) && this.frametop) {
-									this.v[0xf] = 1
+					if (this.frametop) {
+						for(let row = 0; row < 16; row += 1) {
+							let spr = this.ram[(this.i + row * 2) & 0xffff]
+							for(let column = 0; column < 8; column += 1) {
+								const px = x + column
+								const py = y + row
+								if (px >= 0 && px < 128 && py >= 0 && py < 64 && (spr & 0b10000000)) {
+									const pos = (py << 7) | px
+									if (this.frame1[pos]) {
+										this.v[0xf] = 1
+									}
+									if (this.frametop) {
+										this.frame1[pos] ^= 1
+									}
 								}
-								if ((this.frame[pos] & 0xff888888) && this.framebottom) {
-									this.v[0xf] = 1
-								}
-								if (this.frametop) {
-									this.frame[pos] ^= 0x00ffffff
-								}
-								if (this.framebottom) {
-									this.frame[pos] ^= 0x00888888
-								}
+								spr = (spr << 1) & 0xff
 							}
-							spr = (spr << 1) & 0xff
+							spr = this.ram[(this.i + row * 2 + 1) & 0xffff]
+							for(let column = 0; column < 8; column += 1) {
+								const px = x + column + 8
+								const py = y + row
+								if (px >= 0 && px < 128 && py >= 0 && py < 64 && (spr & 0b10000000)) {
+									const pos = (py << 7) | (px)
+									if (this.frame1[pos]) {
+										this.v[0xf] = 1
+									}
+									if (this.frametop) {
+										this.frame1[pos] ^= 1
+									}
+								}
+								spr = (spr << 1) & 0xff
+							}
 						}
-						spr = this.ram[(this.i + row * 2 + 1) & 0xffff]
-						for(let column = 0; column < 8; column += 1) {
-							const px = x + column + 8
-							const py = y + row
-							if (px >= 0 && px < 128 && py >= 0 && py < 64 && (spr & 0b10000000)) {
-								const pos = (py << 7) | (px)
-								if ((this.frame[pos] & 0xff777777) && this.frametop) {
-									this.v[0xf] = 1
+					}
+					if (this.framebottom) {
+						for(let row = 0; row < 16; row += 1) {
+							let spr = this.ram[(this.i + row * 2 + 32) & 0xffff]
+							for(let column = 0; column < 8; column += 1) {
+								const px = x + column
+								const py = y + row
+								if (px >= 0 && px < 128 && py >= 0 && py < 64 && (spr & 0b10000000)) {
+									const pos = (py << 7) | px
+									if (this.frame2[pos]) {
+										this.v[0xf] = 1
+									}
+									if (this.framebottom) {
+										this.frame2[pos] ^= 1
+									}
 								}
-								if ((this.frame[pos] & 0xff888888) && this.framebottom) {
-									this.v[0xf] = 1
-								}
-								if (this.frametop) {
-									this.frame[pos] ^= 0x00ffffff
-								}
-								if (this.framebottom) {
-									this.frame[pos] ^= 0x00888888
-								}
+								spr = (spr << 1) & 0xff
 							}
-							spr = (spr << 1) & 0xff
+							spr = this.ram[(this.i + row * 2 + 1) & 0xffff]
+							for(let column = 0; column < 8; column += 1) {
+								const px = x + column + 8
+								const py = y + row
+								if (px >= 0 && px < 128 && py >= 0 && py < 64 && (spr & 0b10000000)) {
+									const pos = (py << 7) | (px)
+									if (this.frame2[pos]) {
+										this.v[0xf] = 1
+									}
+									if (this.framebottom) {
+										this.frame2[pos] ^= 1
+									}
+								}
+								spr = (spr << 1) & 0xff
+							}
 						}
 					}
 				} else {
-					const x = this.v[h & 0xf]
-					const y = this.v[l >> 4]
-					const rows = 16
+					const x = this.v[h & 0xf] << 24 >> 24
+					const y = this.v[l >> 4] << 24 >> 24
 					this.v[0xf] = 0
-					this.drawSprite(x, y, this.i, rows)
+					if (this.frametop) {
+						for(let row = 0; row < 16; row += 1) {
+							let spr = this.ram[(this.i + row * 2) & 0xffff]
+							for(let column = 0; column < 8; column += 1) {
+								const px = (x + column) * 2
+								const py = (y + row) * 2
+								if (px >= 0 && px < 128 && py >= 0 && py < 64 && (spr & 0b10000000)) {
+									const pos = (py << 7) | px
+									if (this.frame1[pos]) {
+										this.v[0xf] = 1
+									}
+									this.frame1[pos] ^= 1
+									if (x < 127) this.frame1[pos + 1] ^= 1
+									if (y < 63) this.frame1[pos + 128] ^= 1
+									if (x < 127 && x < 63) this.frame1[pos + 129] ^= 1
+								}
+								spr = (spr << 1) & 0xff
+							}
+							spr = this.ram[(this.i + row * 2 + 1) & 0xffff]
+							for(let column = 0; column < 8; column += 1) {
+								const px = (x + column + 8) * 2
+								const py = (y + row) * 2
+								if (px >= 0 && px < 128 && py >= 0 && py < 64 && (spr & 0b10000000)) {
+									const pos = (py << 7) | (px)
+									if (this.frame1[pos]) {
+										this.v[0xf] = 1
+									}
+									this.frame1[pos] ^= 1
+									if (x < 127) this.frame1[pos + 1] ^= 1
+									if (y < 63) this.frame1[pos + 128] ^= 1
+									if (x < 127 && x < 63) this.frame1[pos + 129] ^= 1
+								}
+								spr = (spr << 1) & 0xff
+							}
+						}
+					}
+					if (this.framebottom) {
+						for(let row = 0; row < 16; row += 1) {
+							let spr = this.ram[(this.i + row * 2 + 32) & 0xffff]
+							for(let column = 0; column < 8; column += 1) {
+								const px = (x + column) * 2
+								const py = (y + row) * 2
+								if (px >= 0 && px < 128 && py >= 0 && py < 64 && (spr & 0b10000000)) {
+									const pos = (py << 7) | px
+									if (this.frame2[pos]) {
+										this.v[0xf] = 1
+									}
+									this.frame2[pos] ^= 1
+									if (x < 127) this.frame2[pos + 1] ^= 1
+									if (y < 63) this.frame2[pos + 128] ^= 1
+									if (x < 127 && x < 63) this.frame2[pos + 129] ^= 1
+								}
+								spr = (spr << 1) & 0xff
+							}
+							spr = this.ram[(this.i + row * 2 + 1 + 32) & 0xffff]
+							for(let column = 0; column < 8; column += 1) {
+								const px = (x + column + 8) * 2
+								const py = (y + row) * 2
+								if (px >= 0 && px < 128 && py >= 0 && py < 64 && (spr & 0b10000000)) {
+									const pos = (py << 7) | (px)
+									if (this.frame2[pos]) {
+										this.v[0xf] = 1
+									}
+									this.frame2[pos] ^= 1
+									if (x < 127) this.frame2[pos + 1] ^= 1
+									if (y < 63) this.frame2[pos + 128] ^= 1
+									if (x < 127 && x < 63) this.frame2[pos + 129] ^= 1
+								}
+								spr = (spr << 1) & 0xff
+							}
+						}
+					}
 				}
-				ScreenDevice.putImageData(new ImageData(new Uint8ClampedArray(this.frame.buffer), 128))
+				this.updateScreen()
 				break
 			}
 			const x = this.v[h & 0xf]
@@ -393,7 +607,7 @@ class Chip8Interpreter {
 			const rows = l & 0xf
 			this.v[0xf] = 0
 			this.drawSprite(x, y, this.i, rows)
-			ScreenDevice.putImageData(new ImageData(new Uint8ClampedArray(this.frame.buffer), 128))
+			this.updateScreen()
 			break;
 		}
 		case 0xe:
@@ -458,14 +672,18 @@ class Chip8Interpreter {
 			}
 			case 0x55:
 				for(let idx = 0; idx <= addr; idx++) {
-					this.ram[this.i & 0xffff] = this.v[idx]
-					this.i++
+					this.ram[(this.i + idx) & 0xffff] = this.v[idx]
+				}
+				if (!this.quirkLoadStore) {
+					this.i += addr + 1
 				}
 				break
 			case 0x65:
 				for(let idx = 0; idx <= addr; idx++) {
-					this.v[idx] = this.ram[this.i & 0xffff]
-					this.i++
+					this.v[idx] = this.ram[(this.i + idx) & 0xffff]
+				}
+				if (!this.quirkLoadStore) {
+					this.i += addr + 1
 				}
 				break
 			}
@@ -499,7 +717,7 @@ class Chip8Interpreter {
 				}
 			}
 		}
-		ScreenDevice.putImageData(new ImageData(new Uint8ClampedArray(this.frame.buffer), 128))
+		this.updateScreen()
 		this.delay = Math.max(this.delay - 1, 0)
 		this.sound = Math.max(this.sound - 1, 0)
 
@@ -608,17 +826,17 @@ const Octo = function(){
 			]
 
 			const fontsetsmall = [
-				0b01110000, 0b00100000, 0b01110000, 0b01110000, 0b10001000, 0b11111000, 0b01110000, 0b11111000, 
-				0b10001000, 0b01100000, 0b10001000, 0b10001000, 0b10001000, 0b10000000, 0b10000000, 0b00001000, 
-				0b10001000, 0b00100000, 0b00110000, 0b00110000, 0b11111000, 0b11110000, 0b11110000, 0b00010000, 
-				0b10001000, 0b00100000, 0b01000000, 0b10001000, 0b00001000, 0b00001000, 0b10001000, 0b00100000, 
-				0b01110000, 0b01110000, 0b11111000, 0b01110000, 0b00001000, 0b11110000, 0b01110000, 0b00100000, 
+				0b01100000, 0b00100000, 0b01100000, 0b01100000, 0b10010000, 0b11110000, 0b01100000, 0b11111000, 
+				0b10010000, 0b01100000, 0b10010000, 0b10010000, 0b10010000, 0b10000000, 0b10000000, 0b00010000, 
+				0b10010000, 0b00100000, 0b00100000, 0b00100000, 0b11110000, 0b11100000, 0b11100000, 0b00010000, 
+				0b10010000, 0b00100000, 0b01000000, 0b10010000, 0b00010000, 0b00010000, 0b10010000, 0b00100000, 
+				0b01100000, 0b01110000, 0b11110000, 0b01100000, 0b00010000, 0b11100000, 0b01100000, 0b00100000, 
 
-				0b01110000, 0b01110000, 0b01110000, 0b11110000, 0b01110000, 0b11110000, 0b11111000, 0b11111000, 
-				0b10001000, 0b10001000, 0b10001000, 0b10001000, 0b10001000, 0b10001000, 0b10000000, 0b10000000, 
-				0b01110000, 0b01111000, 0b11111000, 0b11110000, 0b10000000, 0b10001000, 0b11110000, 0b11110000, 
-				0b10001000, 0b00001000, 0b10001000, 0b10001000, 0b10001000, 0b10001000, 0b10000000, 0b10000000, 
-				0b01110000, 0b01110000, 0b10001000, 0b11110000, 0b01110000, 0b11110000, 0b11111000, 0b10000000, 
+				0b01100000, 0b01100000, 0b01100000, 0b11100000, 0b01100000, 0b11100000, 0b11110000, 0b11110000, 
+				0b10010000, 0b10010000, 0b10010000, 0b10010000, 0b10010000, 0b10010000, 0b10000000, 0b10000000, 
+				0b01100000, 0b01110000, 0b11110000, 0b11100000, 0b10000000, 0b10010000, 0b11100000, 0b11100000, 
+				0b10010000, 0b00010000, 0b10010000, 0b10010000, 0b10010000, 0b10010000, 0b10000000, 0b10000000, 
+				0b01100000, 0b01100000, 0b10010000, 0b11100000, 0b01100000, 0b11100000, 0b11110000, 0b10000000, 
 			]
 
 			const fontsetbig = [
@@ -667,7 +885,7 @@ const Octo = function(){
         	document.querySelector("select#screencolormode").value = "RGBA8888"
         	document.querySelector("select#screencolormode").dispatchEvent(new Event('change', { bubbles: true }))
 
-			return new Chip8Interpreter(rom, c.constants.__SPEED ?? 720)
+			return new Chip8Interpreter(rom, c.constants.__SPEED ?? 720).appllyQuirks(c.constants)
 		}
 	}
 
