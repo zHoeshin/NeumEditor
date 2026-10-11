@@ -1109,7 +1109,7 @@ const URCL = function(){
 						}
 						arr.push(new Token("wrd", str, scolumn, srow, si, str))
 					}
-					line.push(new Token("arr", arr, scolumn, srow, si, str))
+					line.push(new Token("arr", arr, scolumn, srow, si, "[array Array]"))
 					continue
 				}
 				if (c == "/") {
