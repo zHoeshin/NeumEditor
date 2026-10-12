@@ -162,11 +162,15 @@ class URCLMachine {
 	}
 
 	async dispose() {
+		console.log("disposed")
 		const w = await this.drivehandle?.createWritable()
-		if (!w) {
-			return
+		if (w) {
+			await w.write(this.driveContents)
+			await w.close()
+			console.log("saved drive")
+		} else {
+			console.error("cannot write to drive")
 		}
-		await w.write(this.driveContents)
 	}
 
 	markCurrentLine(line) {
@@ -237,7 +241,7 @@ class URCLMachine {
         this.sp = this.sp - 1
         this.memory[this.sp & this.memorymask] = value;
 
-        this._mlog.push(`${this.pc2line[this.pc - 1]}:+ [${this.sp}]= ${value}`)
+        this._mlog.push(`${this.pc2line[this.pc - 1] + 1}:+ [${this.sp}]= ${value}`)
 
         return 0
     }
@@ -252,7 +256,7 @@ class URCLMachine {
         const value = this.memory[this.sp & this.memorymask];
         this.sp = this.sp + 1
 
-        this._mlog.push(`${this.pc2line[this.pc - 1]}:- [${this.sp}], ${value}`)
+        this._mlog.push(`${this.pc2line[this.pc - 1] + 1}:- [${this.sp}], ${value}`)
 
         return value;
     }
@@ -269,7 +273,7 @@ class URCLMachine {
         this.sp = this.sp - 1
         this.memory[this.sp & this.memorymask] = value;
 
-        this._mlog.push(`${this.pc2line[this.pc - 1]}:+> [${this.sp}]= ${value}`)
+        this._mlog.push(`${this.pc2line[this.pc - 1] + 1}:+> [${this.sp + 1}]= ${value}`)
 
         return 0
     }
@@ -286,7 +290,7 @@ class URCLMachine {
 
         // console.error("out", value, "at", this.sp - 1)
 
-        this._mlog.push(`${this.pc2line[this.pc - 1]}:<- [${this.sp}], ${value}`)
+        this._mlog.push(`${this.pc2line[this.pc - 1] + 1}:<- [${this.sp}], ${value}`)
 
 
         return value;
@@ -302,7 +306,7 @@ class URCLMachine {
         // }
         this.memory[addr & this.memorymask] = value;
 
-        this._mlog.push(`${this.pc2line[this.pc - 1]}: [${addr}]= ${value}`)
+        this._mlog.push(`${this.pc2line[this.pc - 1] + 1}: [${addr}]= ${value}`)
     
         return 0
     }
@@ -313,7 +317,7 @@ class URCLMachine {
         // }
         // console.warn(this.memory[addr], "at", addr)
 
-        this._mlog.push(`${this.pc2line[this.pc - 1]}: [${addr}], ${this.memory[addr & this.memorymask]}`)
+        this._mlog.push(`${this.pc2line[this.pc - 1] + 1}: [${addr}], ${this.memory[addr & this.memorymask]}`)
         return this.memory[addr & this.memorymask];
     }
 
@@ -701,7 +705,7 @@ const URCL = function(){
 					case "def":
 						return `@${this.raw}`
 					case "reg":
-						return `R${this.raw}`
+						return `${this.raw}`
 					case "mem":
 						return `M${this.raw}`
 					case "rel":
@@ -773,7 +777,7 @@ const URCL = function(){
 							column += 1
 							char = raw[i]
 						}
-						line.push(new Token("reg", parseInt(numstr.replace(/_/g, "")), scolumn, srow, si, numstr))
+						line.push(new Token("reg", parseInt(numstr.replace(/_/g, "")), scolumn, srow, si, c + numstr))
 						continue
 					}
 				}
@@ -1656,7 +1660,7 @@ const URCL = function(){
 						// 	return `this.registers[${dest.value}] = (${s}) & ${MASK};`
 						// }
 						if (DEBUG_TRACE) {
-							return `let val = (${value}) ${LIM}; this.registers[${dest.value + 1}] = val; /* trace this.log(${dest.row + 1}, ${instrstr}, "", val) trace */;`
+							return `let val = (${value}) ${LIM}; this.registers[${dest.value + 1}] = val; /* trace this.log(${dest.row}, ${instrstr}, "", val) trace */;`
 						} else {
 							return `this.registers[${dest.value + 1}] = (${value}) ${LIM};;`
 						}
@@ -2080,9 +2084,9 @@ case "BSS":
 		unrecoverable = true
 	} else {
 		if (META.SHIFT_OVERFLOW == "mask") {
-			instr += assign(args[0], `${arg(args[1])} >> (${arg(args[2])} & ${SHIFTMASK})`)
+			instr += assign(args[0], `this.toSigned(${arg(args[1])}) >> (${arg(args[2])} & ${SHIFTMASK})`)
 		} else {
-			instr += `{const s = ${arg(args[2])}; ${assign(args[0], `(s > this.bits) ? (${arg(args[1])} & ${SIGNMASK}) : (${arg(args[1])} >> (s))`)}}`
+			instr += `{const s = ${arg(args[2])}; ${assign(args[0], `(s > this.bits) ? (${arg(args[1])} & ${SIGNMASK}) : (this.toSigned(${arg(args[1])}) >> (s))`)}}`
 		}
 	}
 	break;
