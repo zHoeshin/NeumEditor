@@ -76,7 +76,7 @@ const PORTNAMES = Object.fromEntries(
 	Object.entries(PORTS).map(([NAME, ID]) => [ID, NAME])
 )
 
-const DEBUG_TRACE = true
+const DEBUG_TRACE = false
 const DEBUG_MEMORY = false
 
 function mp2(n) {
@@ -169,7 +169,7 @@ class URCLMachine {
 			await w.close()
 			console.log("saved drive")
 		} else {
-			console.error("cannot write to drive")
+			
 		}
 	}
 
@@ -241,7 +241,7 @@ class URCLMachine {
         this.sp = this.sp - 1
         this.memory[this.sp & this.memorymask] = value;
 
-        this._mlog.push(`${this.pc2line[this.pc - 1] + 1}:+ [${this.sp}]= ${value}`)
+        DEBUG_MEMORY && this._mlog.push(`${this.pc2line[this.pc - 1] + 1}:+ [${this.sp}]= ${value}`)
 
         return 0
     }
@@ -256,7 +256,7 @@ class URCLMachine {
         const value = this.memory[this.sp & this.memorymask];
         this.sp = this.sp + 1
 
-        this._mlog.push(`${this.pc2line[this.pc - 1] + 1}:- [${this.sp}], ${value}`)
+        DEBUG_MEMORY && this._mlog.push(`${this.pc2line[this.pc - 1] + 1}:- [${this.sp}], ${value}`)
 
         return value;
     }
@@ -273,7 +273,7 @@ class URCLMachine {
         this.sp = this.sp - 1
         this.memory[this.sp & this.memorymask] = value;
 
-        this._mlog.push(`${this.pc2line[this.pc - 1] + 1}:+> [${this.sp + 1}]= ${value}`)
+        DEBUG_MEMORY && this._mlog.push(`${this.pc2line[this.pc - 1] + 1}:+> [${this.sp + 1}]= ${value}`)
 
         return 0
     }
@@ -290,7 +290,7 @@ class URCLMachine {
 
         // console.error("out", value, "at", this.sp - 1)
 
-        this._mlog.push(`${this.pc2line[this.pc - 1] + 1}:<- [${this.sp}], ${value}`)
+        DEBUG_MEMORY && this._mlog.push(`${this.pc2line[this.pc - 1] + 1}:<- [${this.sp}], ${value}`)
 
 
         return value;
@@ -306,7 +306,7 @@ class URCLMachine {
         // }
         this.memory[addr & this.memorymask] = value;
 
-        this._mlog.push(`${this.pc2line[this.pc - 1] + 1}: [${addr}]= ${value}`)
+        DEBUG_MEMORY && this._mlog.push(`${this.pc2line[this.pc - 1] + 1}: [${addr}]= ${value}`)
     
         return 0
     }
@@ -317,7 +317,8 @@ class URCLMachine {
         // }
         // console.warn(this.memory[addr], "at", addr)
 
-        this._mlog.push(`${this.pc2line[this.pc - 1] + 1}: [${addr}], ${this.memory[addr & this.memorymask]}`)
+        DEBUG_MEMORY && this._mlog.push(`${this.pc2line[this.pc - 1] + 1}: [${addr}], ${this.memory[addr & this.memorymask]}`)
+
         return this.memory[addr & this.memorymask];
     }
 
@@ -437,6 +438,7 @@ class URCLMachine {
 			break
 		case PORTS.TEXT:
 			ConsoleDevice.outCodePoint(value)
+			RuntimeManager.pause()
 			break
 		case PORTS.INT:
 		case PORTS.NUMB:
@@ -2034,7 +2036,7 @@ case "DIV":
 		annotations.push({column: opcode.column, row: opcode.row, type: "error", text: `Expected 3 operands for instruction ${opcode.value}`})
 		unrecoverable = true
 	} else {
-		instr += assign(args[0], `${arg(args[2])} === 0 ? ${MASK} : Math.floor((${arg(args[1])} >>> 0) / (${arg(args[2])} >>> 0))`)
+		instr += assign(args[0], `${arg(args[2])} === 0 ? ${MASK} : Math.floor((${arg(args[1])}) / (${arg(args[2])}))`)
 	}
 	break;
 case "MOD":
@@ -2175,7 +2177,8 @@ case "SDIV":
 		annotations.push({column: opcode.column, row: opcode.row, type: "error", text: `Expected 3 operands for instruction ${opcode.value}`})
 		unrecoverable = true
 	} else {
-		instr += assign(args[0], `${arg(args[2])} === 0 ? ${MASK} : ((this.toSigned(${arg(args[1])}) / this.toSigned(${arg(args[2])})) | 0)`)
+		// instr += assign(args[0], `${arg(args[2])} === 0 ? ${MASK} : ((this.toSigned(${arg(args[1])}) / this.toSigned(${arg(args[2])})) | 0)`)
+		instr += assign(args[0], `(this.toSigned(${arg(args[1])}) / this.toSigned(${arg(args[2])}))`)
 	}
 	break;
 case "SBRL": // BRANCH
